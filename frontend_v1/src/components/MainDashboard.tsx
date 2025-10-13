@@ -31,7 +31,6 @@ const mockStudies: Study[] = [
     currentMembers: 4,
     ownerId: '2',
     ownerNickname: '영어왕',
-    ownerGender: '여성',
     status: 'recruiting',
     progress: 65
   },
@@ -50,7 +49,6 @@ const mockStudies: Study[] = [
     currentMembers: 6,
     ownerId: '3',
     ownerNickname: '코딩마스터',
-    ownerGender: '남성',
     status: 'active',
     progress: 40
   },
@@ -69,7 +67,6 @@ const mockStudies: Study[] = [
     currentMembers: 8,
     ownerId: '4',
     ownerNickname: '경영컨설턴트',
-    ownerGender: '남성',
     status: 'active'
   }
 ];
@@ -276,7 +273,7 @@ function StudyCard({ study, onSelect, showProgress }: StudyCardProps) {
           <div className="flex-1">
             <CardTitle className="text-base line-clamp-1">{study.name}</CardTitle>
             <CardDescription className="text-sm mt-1">
-              {study.ownerNickname} ({study.ownerGender})
+              {study.ownerNickname}
             </CardDescription>
           </div>
           {getStatusBadge(study.status)}

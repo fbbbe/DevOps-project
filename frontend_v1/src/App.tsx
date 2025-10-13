@@ -30,7 +30,6 @@ export type Study = {
   currentMembers: number;
   ownerId: string;
   ownerNickname: string;
-  ownerGender: '남성' | '여성';
   status: 'recruiting' | 'active' | 'completed';
   progress?: number;
 };

@@ -107,7 +107,7 @@ export function StudyDetail({ study, user, onBack, onViewChange }: StudyDetailPr
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm text-muted-foreground">
-                    {study.ownerNickname} ({study.ownerGender})
+                    {study.ownerNickname}
                   </span>
                 </div>
               </div>
