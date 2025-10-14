@@ -1,2 +1,5 @@
 /frontend_v1/node_modules
 /frontend_v1/package-lock.json
+
+/mobile/node_modules
+/mobile/package-lock.json
