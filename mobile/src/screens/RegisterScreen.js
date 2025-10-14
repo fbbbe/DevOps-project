@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+﻿import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { register } from '../services/auth';
+import { theme } from '../theme.js';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
 
 const UNIVERSITIES = ['서울대학교', '연세대학교', '고려대학교', '성균관대학교', '한양대학교', '기타'];
 
@@ -29,32 +33,29 @@ export default function RegisterScreen({ navigation }) {
     <View style={styles.container}>
       <Text style={styles.title}>회원가입</Text>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.label}>이메일</Text>
-        <TextInput
+        <Input
           value={email}
           onChangeText={setEmail}
           placeholder="이메일을 입력하세요"
           keyboardType="email-address"
           autoCapitalize="none"
-          style={styles.input}
         />
 
         <Text style={styles.label}>비밀번호</Text>
-        <TextInput
+        <Input
           value={password}
           onChangeText={setPassword}
           placeholder="비밀번호를 입력하세요"
           secureTextEntry
-          style={styles.input}
         />
 
         <Text style={styles.label}>닉네임</Text>
-        <TextInput
+        <Input
           value={nickname}
           onChangeText={setNickname}
           placeholder="닉네임을 입력하세요"
-          style={styles.input}
         />
 
         <Text style={styles.label}>성별</Text>
@@ -70,14 +71,12 @@ export default function RegisterScreen({ navigation }) {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={onSubmit} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? '가입 중...' : '회원가입'}</Text>
-        </TouchableOpacity>
+        <Button title={loading ? '가입 중...' : '회원가입'} onPress={onSubmit} disabled={loading} />
 
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.link}>이미 계정이 있으신가요? 로그인</Text>
-        </TouchableOpacity>
-      </View>
+        <Button variant="link" onPress={() => navigation.goBack()}>
+          이미 계정이 있으신가요? 로그인
+        </Button>
+      </Card>
     </View>
   );
 }
@@ -86,36 +85,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: theme.colors.background,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     textAlign: 'center',
     marginVertical: 10,
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    color: theme.colors.primary,
   },
   label: {
     marginTop: 8,
     marginBottom: 6,
-    color: '#374151',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+    color: theme.colors.foreground,
   },
   row: {
     flexDirection: 'row',
@@ -130,48 +112,37 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: theme.colors.border,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.card,
   },
   chipSmall: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: theme.colors.border,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.card,
   },
   chipActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   chipText: {
-    color: '#111827',
+    color: theme.colors.foreground,
     fontWeight: '600',
   },
   chipTextSmall: {
-    color: '#111827',
+    color: theme.colors.foreground,
   },
   chipTextActive: {
     color: 'white',
   },
-  button: {
-    backgroundColor: '#2563eb',
-    marginTop: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
   link: {
     marginTop: 12,
-    color: '#2563eb',
+    color: theme.colors.primary,
     textAlign: 'center',
   },
 });

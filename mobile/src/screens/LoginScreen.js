@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+﻿import React, { useState } from 'react';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { login } from '../services/auth';
+import { theme } from '../theme.js';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -24,36 +28,32 @@ export default function LoginScreen({ navigation }) {
       <Text style={styles.title}>Study-UP</Text>
       <Text style={styles.subtitle}>함께 성장하는 스터디 플랫폼</Text>
 
-      <View style={styles.card}>
+      <Card>
         <Text style={styles.cardTitle}>로그인</Text>
 
         <Text style={styles.label}>이메일</Text>
-        <TextInput
+        <Input
           value={email}
           onChangeText={setEmail}
           placeholder="이메일을 입력하세요"
           keyboardType="email-address"
           autoCapitalize="none"
-          style={styles.input}
         />
 
         <Text style={styles.label}>비밀번호</Text>
-        <TextInput
+        <Input
           value={password}
           onChangeText={setPassword}
           placeholder="비밀번호를 입력하세요"
           secureTextEntry
-          style={styles.input}
         />
 
-        <TouchableOpacity style={styles.button} onPress={onSubmit} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? '로그인 중...' : '로그인'}</Text>
-        </TouchableOpacity>
+        <Button title={loading ? '로그인 중...' : '로그인'} onPress={onSubmit} disabled={loading} />
 
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.link}>아직 계정이 없으신가요? 회원가입</Text>
-        </TouchableOpacity>
-      </View>
+        <Button variant="link" onPress={() => navigation.navigate('Register')}>
+          아직 계정이 없으신가요? 회원가입
+        </Button>
+      </Card>
     </View>
   );
 }
@@ -62,64 +62,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
   },
   title: {
     fontSize: 32,
     fontWeight: '700',
     textAlign: 'center',
-    color: '#2563eb',
+    color: theme.colors.primary,
   },
   subtitle: {
     textAlign: 'center',
-    color: '#6b7280',
+    color: theme.colors.mutedForeground,
     marginTop: 6,
     marginBottom: 16,
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 12,
+    color: theme.colors.foreground,
   },
   label: {
     marginTop: 8,
     marginBottom: 6,
-    color: '#374151',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-  },
-  button: {
-    backgroundColor: '#2563eb',
-    marginTop: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  link: {
-    marginTop: 12,
-    color: '#2563eb',
-    textAlign: 'center',
+    color: theme.colors.foreground,
   },
 });
 

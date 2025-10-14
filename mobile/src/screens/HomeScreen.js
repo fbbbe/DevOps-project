@@ -1,5 +1,7 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { theme } from '../theme.js';
+import Card from '../components/ui/Card';
 
 export default function HomeScreen({ route, navigation }) {
   const user = route?.params?.user;
@@ -8,18 +10,18 @@ export default function HomeScreen({ route, navigation }) {
     <View style={styles.container}>
       <Text style={styles.title}>환영합니다{user?.nickname ? `, ${user.nickname}` : ''}님</Text>
       {!!user && (
-        <View style={styles.card}>
+        <Card>
           <Text style={styles.item}>이메일: {user.email}</Text>
           {user.gender ? <Text style={styles.item}>성별: {user.gender}</Text> : null}
           {user.university ? <Text style={styles.item}>대학교: {user.university}</Text> : null}
-        </View>
+        </Card>
       )}
 
       <TouchableOpacity
-        style={styles.button}
+        style={styles.logout}
         onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Login' }] })}
       >
-        <Text style={styles.buttonText}>로그아웃</Text>
+        <Text style={styles.logoutText}>로그아웃</Text>
       </TouchableOpacity>
     </View>
   );
@@ -29,36 +31,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: theme.colors.background,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     marginVertical: 12,
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    color: theme.colors.primary,
   },
   item: {
     marginBottom: 4,
-    color: '#374151',
+    color: theme.colors.foreground,
   },
-  button: {
-    backgroundColor: '#ef4444',
+  logout: {
+    backgroundColor: theme.colors.destructive,
     marginTop: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: theme.radius,
     alignItems: 'center',
   },
-  buttonText: {
-    color: 'white',
+  logoutText: {
+    color: theme.colors.destructiveForeground,
     fontWeight: '600',
   },
 });
