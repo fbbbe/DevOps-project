@@ -1,4 +1,4 @@
-export const theme = {
+﻿export const theme = {
   colors: {
     background: '#ffffff',
     foreground: '#111827',
@@ -11,12 +11,23 @@ export const theme = {
     muted: '#ececf0',
     mutedForeground: '#717182',
     accent: '#e9ebef',
+    accentForeground: '#030213',
     border: 'rgba(0,0,0,0.1)',
+    input: 'transparent',
     inputBackground: '#f3f3f5',
+    switchBackground: '#cbced4',
     destructive: '#d4183d',
     destructiveForeground: '#ffffff',
+    ring: '#b5b5b5',
+    chart1: '#f29f67',
+    chart2: '#6db6e8',
+    chart3: '#6d78e8',
+    chart4: '#f7d36a',
+    chart5: '#f4a261',
   },
   radius: 10,
+  radiusSm: 6,
+  radiusMd: 8,
+  radiusXl: 14,
   spacing: 8,
 };
-

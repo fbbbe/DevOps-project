@@ -1,16 +1,19 @@
-import React from 'react';
+﻿import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { theme } from '../../theme';
 
-export default function Button({ title, children, variant = 'primary', style, textStyle, ...props }) {
+export default function Button({ title, children, variant = 'primary' , size = 'md', style, textStyle, ...props }) {
   const isLink = variant === 'link';
   const isDestructive = variant === 'destructive';
+  const isSecondary = variant === 'secondary';
+  const isOutline = variant === 'outline';
+  const isGhost = variant === 'ghost';
 
   const containerStyles = [
-    styles.base,
+    styles.base, size === 'sm' ? styles.sm : size === 'lg' ? styles.lg : null,
     isLink && styles.link,
     isDestructive && styles.destructive,
-    !isLink && !isDestructive && styles.primary,
+    isSecondary && styles.secondary || isOutline && styles.outline || isGhost && styles.ghost || (!isLink && !isDestructive && styles.primary),
     style,
   ];
 
@@ -18,7 +21,7 @@ export default function Button({ title, children, variant = 'primary', style, te
     styles.label,
     isLink && styles.linkLabel,
     isDestructive && styles.destructiveLabel,
-    !isLink && !isDestructive && styles.primaryLabel,
+    isSecondary && styles.secondaryLabel || isOutline && styles.outlineLabel || isGhost && styles.ghostLabel || (!isLink && !isDestructive && styles.primaryLabel),
     textStyle,
   ];
 
@@ -61,4 +64,9 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
   },
 });
+
+
+// extend styles
+
+
 

@@ -1,6 +1,7 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useContext, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { register } from '../services/auth';
+import { AppContext } from '../context/AppContext';
 import { theme } from '../theme.js';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
@@ -9,6 +10,7 @@ import Button from '../components/ui/Button';
 const UNIVERSITIES = ['서울대학교', '연세대학교', '고려대학교', '성균관대학교', '한양대학교', '기타'];
 
 export default function RegisterScreen({ navigation }) {
+  const { setUser } = useContext(AppContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
@@ -21,7 +23,7 @@ export default function RegisterScreen({ navigation }) {
       setLoading(true);
       const user = await register({ email: email.trim(), password, nickname, gender, university });
       Alert.alert('환영합니다!', `${user.nickname}님, 회원가입이 완료되었습니다.`);
-      navigation.reset({ index: 0, routes: [{ name: 'Home', params: { user } }] });
+      setUser(user);
     } catch (err) {
       Alert.alert('회원가입 실패', err?.message || '잠시 후 다시 시도하세요.');
     } finally {
@@ -70,6 +72,24 @@ export default function RegisterScreen({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
+
+        <Text style={styles.label}>대학교 (선택)</Text>
+        <View style={styles.rowWrap}>
+          {UNIVERSITIES.map((u) => (
+            <TouchableOpacity
+              key={u}
+              style={[styles.chipSmall, university === u && styles.chipActive]}
+              onPress={() => setUniversity(u)}
+            >
+              <Text style={[styles.chipTextSmall, university === u && styles.chipTextActive]}>{u}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Input
+          value={university}
+          onChangeText={setUniversity}
+          placeholder="기타 학교명 직접 입력"
+        />
 
         <Button title={loading ? '가입 중...' : '회원가입'} onPress={onSubmit} disabled={loading} />
 
@@ -138,12 +158,8 @@ const styles = StyleSheet.create({
     color: theme.colors.foreground,
   },
   chipTextActive: {
-    color: 'white',
-  },
-  link: {
-    marginTop: 12,
-    color: theme.colors.primary,
-    textAlign: 'center',
+    color: theme.colors.primaryForeground,
   },
 });
+
 

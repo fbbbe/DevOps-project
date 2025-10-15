@@ -1,12 +1,14 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useContext, useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { login } from '../services/auth';
 import { theme } from '../theme.js';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
+import { AppContext } from '../context/AppContext';
 
 export default function LoginScreen({ navigation }) {
+  const { setUser } = useContext(AppContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,7 +17,7 @@ export default function LoginScreen({ navigation }) {
     try {
       setLoading(true);
       const user = await login(email.trim(), password);
-      navigation.reset({ index: 0, routes: [{ name: 'Home', params: { user } }] });
+      setUser(user);
     } catch (err) {
       Alert.alert('로그인 실패', err?.message || '잠시 후 다시 시도하세요.');
     } finally {
@@ -89,4 +91,3 @@ const styles = StyleSheet.create({
     color: theme.colors.foreground,
   },
 });
-
