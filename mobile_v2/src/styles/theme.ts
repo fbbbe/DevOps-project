@@ -1,3 +1,5 @@
+// mobile_v2/src/styles/theme.ts
+
 export const colors = {
   background: '#ffffff',
   surface: '#f7f8ff',
