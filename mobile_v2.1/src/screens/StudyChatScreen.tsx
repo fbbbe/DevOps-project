@@ -1,16 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, ScrollView, TextInput, StyleSheet, KeyboardAvoidingView,
-  Platform, Pressable
+  View, Text, ScrollView, StyleSheet, KeyboardAvoidingView,
+  Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Screen from '../components/Screen';
 import theme from '../styles/theme';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
+import { Card, CardContent } from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import { ArrowLeft, Send, BookOpen } from 'lucide-react-native';
 
-// 웹 StudyChat.tsx의 타입/흐름을 반영  :contentReference[oaicite:1]{index=1}
 export type Study = {
   id: string;
   name: string;
@@ -38,7 +38,6 @@ type Message = {
   timestamp: Date;
 };
 
-// 웹의 초기 메시지 구조를 그대로 사용  :contentReference[oaicite:2]{index=2}
 const initialMessages: Message[] = [
   { id: '1', userId: '2', userNickname: '영어왕', text: '안녕하세요! 첫 모임 때 준비물이 따로 있을까요?', timestamp: new Date(Date.now() - 3600000) },
   { id: '2', userId: '3', userNickname: '스터디킹', text: '노트북이랑 필기도구 정도면 충분할 것 같아요!', timestamp: new Date(Date.now() - 3000000) },
@@ -46,6 +45,8 @@ const initialMessages: Message[] = [
 ];
 
 export default function StudyChatScreen({ route, navigation }: any) {
+  const insets = useSafeAreaInsets();
+
   const study: Study = route?.params?.study ?? {
     id: 'stub', name: '채팅 테스트 스터디', subject: '어학', description: '', tags: [],
     region: '온라인', type: 'online', duration: 'short',
@@ -59,12 +60,10 @@ export default function StudyChatScreen({ route, navigation }: any) {
   const scrollRef = useRef<ScrollView>(null);
 
   const scrollToBottom = () => {
-    // 레이아웃 직후 스크롤 보장
     requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     });
   };
-
   useEffect(() => { scrollToBottom(); }, [messages]);
 
   const handleSend = () => {
@@ -133,75 +132,88 @@ export default function StudyChatScreen({ route, navigation }: any) {
         <View style={{ width:32 }} />
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={{ flex:1 }}>
-        {/* Messages */}
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={{ padding: 16, paddingBottom: 96 }}
-          onContentSizeChange={scrollToBottom}
-          keyboardShouldPersistTaps="handled"
-        >
-          {grouped.map(([date, msgs]) => (
-            <View key={date} style={{ marginBottom: 12 }}>
-              {/* Date pill */}
-              <View style={{ alignItems:'center', marginVertical: 8 }}>
-                <View style={S.datePill}><Text style={S.datePillTxt}>{date}</Text></View>
-              </View>
+      {/* ✅ 스크롤 + 입력바 모두를 KAV로 감싼다 */}
+      <KeyboardAvoidingView
+        behavior={Platform.select({ ios: 'padding', android: 'height' })}
+        keyboardVerticalOffset={insets.top + 48}  // 헤더 높이 보정
+        style={{ flex: 1 }}
+      >
+        <View style={{ flex: 1 }}>
+          {/* Messages */}
+          <ScrollView
+            ref={scrollRef}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 16 }}
+            onContentSizeChange={scrollToBottom}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {grouped.map(([date, msgs]) => (
+              <View key={date} style={{ marginBottom: 12 }}>
+                {/* Date pill */}
+                <View style={{ alignItems:'center', marginVertical: 8 }}>
+                  <View style={S.datePill}><Text style={S.datePillTxt}>{date}</Text></View>
+                </View>
 
-              {msgs.map(m => {
-                const own = m.userId === user.id;
-                return (
-                  <View
-                    key={m.id}
-                    style={[
-                      S.msgRow,
-                      own ? { flexDirection: 'row-reverse' } : null
-                    ]}
-                  >
-                    {!own && <AvatarFallback name={m.userNickname} />}
+                {msgs.map(m => {
+                  const own = m.userId === user.id;
+                  return (
+                    <View
+                      key={m.id}
+                      style={[
+                        S.msgRow,
+                        own ? { flexDirection: 'row-reverse' } : null
+                      ]}
+                    >
+                      {!own && <AvatarFallback name={m.userNickname} />}
 
-                    <View style={[{ maxWidth: '75%' }, own ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
-                      {!own && <Text style={S.nickname}>{m.userNickname}</Text>}
+                      <View style={[{ maxWidth: '75%' }, own ? { alignItems: 'flex-end' } : { alignItems: 'flex-start' }]}>
+                        {!own && <Text style={S.nickname}>{m.userNickname}</Text>}
 
-                      <View style={S.msgLine}>
-                        {own && <Text style={S.time}>{formatTime(m.timestamp)}</Text>}
-                        <Card style={[S.bubble, own ? S.bubbleOwn : S.bubbleOther]}>
-                          <CardContent style={{ padding: 10 }}>
-                            <Text style={[S.msgText, own ? { color: theme.color.onPrimary } : null]}>
-                              {m.text}
-                            </Text>
-                          </CardContent>
-                        </Card>
-                        {!own && <Text style={S.time}>{formatTime(m.timestamp)}</Text>}
+                        <View style={S.msgLine}>
+                          {own && <Text style={S.time}>{formatTime(m.timestamp)}</Text>}
+                          <Card style={[S.bubble, own ? S.bubbleOwn : S.bubbleOther]}>
+                            <CardContent style={{ padding: 10 }}>
+                              <Text style={[S.msgText, own ? { color: theme.color.onPrimary } : null]}>
+                                {m.text}
+                              </Text>
+                            </CardContent>
+                          </Card>
+                          {!own && <Text style={S.time}>{formatTime(m.timestamp)}</Text>}
+                        </View>
                       </View>
                     </View>
-                  </View>
-                );
-              })}
-            </View>
-          ))}
-        </ScrollView>
-      </KeyboardAvoidingView>
+                  );
+                })}
+              </View>
+            ))}
+          </ScrollView>
 
-      {/* Input */}
-      <View style={S.footer}>
-        <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-          <Input
-            value={newMessage}
-            onChangeText={setNewMessage}
-            placeholder="메시지를 입력하세요..."
-            style={{ flex:1 }}
-          />
-          <Button
-            size="icon"
-            onPress={handleSend}
-            disabled={newMessage.trim() === ''}
-            style={{ width: 44, height: 44, alignItems:'center', justifyContent:'center' }}
-          >
-            <Send size={18} color={newMessage.trim() ? theme.color.onPrimary : theme.color.mutedText} />
-          </Button>
+          {/* ✅ absolute 제거: 일반 레이아웃 하단 고정 + Safe Area 패딩 */}
+          <View style={[S.footer, { paddingBottom: 12 + insets.bottom }]}>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+              <Input
+                value={newMessage}
+                onChangeText={setNewMessage}
+                placeholder="메시지를 입력하세요..."
+                style={{ flex:1 }}
+                returnKeyType="send"
+                blurOnSubmit={false}
+                onSubmitEditing={handleSend}
+                onFocus={scrollToBottom}
+              />
+              <Button
+                size="icon"
+                onPress={handleSend}
+                disabled={newMessage.trim() === ''}
+                style={{ width: 44, height: 44, alignItems:'center', justifyContent:'center' }}
+              >
+                <Send size={18} color={newMessage.trim() ? theme.color.onPrimary : theme.color.mutedText} />
+              </Button>
+            </View>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Screen>
   );
 }
@@ -229,7 +241,6 @@ const S = StyleSheet.create({
   msgText: { fontSize: 14, lineHeight: 20, color: theme.color.text },
   time: { fontSize: 10, color: theme.color.mutedText },
   footer: {
-    position:'absolute', left:0, right:0, bottom:0,
     borderTopWidth:1, borderTopColor: theme.color.border,
     backgroundColor: theme.color.bg, padding: 12,
   },
