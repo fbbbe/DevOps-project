@@ -1,8 +1,4 @@
-﻿아하—**해결된 이슈들은 빼고** 깔끔한 README만 줄게. 아래 내용으로 `mobile_v2.1/README.md`에 넣으면 돼.
-
----
-
-# Study-UP Mobile v2.1 (Expo + React Native)
+﻿# Study-UP Mobile v2.1 (Expo + React Native)
 
 `mobile_v2.1`는 웹 앱(`frontend_v2`)의 UI/UX를 **Expo 기반 React Native**로 재현한 모바일 앱입니다.
 현재는 목업 데이터로 동작하며, ORDS/Oracle 연동을 위한 구조가 준비되어 있습니다.
