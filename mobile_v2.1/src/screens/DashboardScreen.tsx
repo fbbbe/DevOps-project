@@ -3,10 +3,12 @@ import Screen from '../components/Screen';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import Badge from '../components/Badge';
+import ProgressBar from '../components/ProgressBar';
+import SegmentTabs from '../components/SegmentTabs';
 import Select, { Option } from '../components/Select';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/Card';
 import theme from '../styles/theme';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Search, MapPin, Users, Calendar, BookOpen, Heart } from 'lucide-react-native';
 import { STUDY_SUBJECTS } from '../data/subjects';
 import { useNavigation } from '@react-navigation/native';
@@ -121,117 +123,117 @@ export default function DashboardScreen() {
 
   return (
     <Screen>
-      {/* Header */}
-      <View style={S.header}>
-        <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-          <BookOpen size={24} color={theme.color.primary} />
-          <Text style={S.logo}>Study-UP</Text>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={S.header}>
+          <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+            <BookOpen size={24} color={theme.color.primary} />
+            <Text style={S.logo}>Study-UP</Text>
+          </View>
         </View>
-      </View>
 
-      {/* Welcome */}
-      <View style={{ marginTop: 12, marginBottom: 12 }}>
-        <Text style={{ fontSize:16, marginBottom: 4 }}>안녕하세요! 👋</Text>
-        <Text style={{ color: theme.color.mutedText, fontSize: 12 }}>새로운 스터디를 찾아보거나 만들어보세요.</Text>
-      </View>
-
-      {/* Search */}
-      <View style={{ flexDirection:'row', gap:8, marginBottom: 12 }}>
-        <View style={{ flex:1 }}>
-          <Input placeholder="스터디 검색..." value={searchQuery} onChangeText={setSearchQuery} />
+        {/* Welcome */}
+        <View style={{ marginTop: 12, marginBottom: 12 }}>
+          <Text style={{ fontSize:16, marginBottom: 4 }}>안녕하세요! 👋</Text>
+          <Text style={{ color: theme.color.mutedText, fontSize: 12 }}>새로운 스터디를 찾아보거나 만들어보세요.</Text>
         </View>
-        <Button variant="outline" size="icon">
-          <Search size={16} color={theme.color.text} />
-        </Button>
-      </View>
 
-      {/* Filters */}
-      <View style={{ gap:8, marginBottom: 12 }}>
-        <View style={{ flexDirection:'row', gap:8 }}>
+        {/* Search */}
+        <View style={{ flexDirection:'row', gap:8, marginBottom: 12 }}>
           <View style={{ flex:1 }}>
-            <Select value={selectedSido} onChange={handleSidoChange} placeholder="시/도" options={sidoOptions} />
+            <Input placeholder="스터디 검색..." value={searchQuery} onChangeText={setSearchQuery} />
+          </View>
+          <Button variant="outline" size="icon">
+            <Search size={16} color={theme.color.text} />
+          </Button>
+        </View>
+
+        {/* Filters */}
+        <View style={{ gap:8, marginBottom: 12 }}>
+          <View style={{ flexDirection:'row', gap:8 }}>
+            <View style={{ flex:1 }}>
+              <Select value={selectedSido} onChange={handleSidoChange} placeholder="시/도" options={sidoOptions} />
+            </View>
+
+            {(selectedSido !== 'all' && selectedSido !== '온라인' && availableSigungu.length > 0) ? (
+              <View style={{ flex:1 }}>
+                <Select value={selectedSigungu} onChange={setSelectedSigungu} placeholder="시/군/구" options={sigunguOptions} />
+              </View>
+            ) : (
+              <View style={{ flex:1 }}>
+                <Select value={selectedSubject} onChange={setSelectedSubject} placeholder="주제" options={subjectOptions} />
+              </View>
+            )}
           </View>
 
-          {(selectedSido !== 'all' && selectedSido !== '온라인' && availableSigungu.length > 0) ? (
-            <View style={{ flex:1 }}>
-              <Select value={selectedSigungu} onChange={setSelectedSigungu} placeholder="시/군/구" options={sigunguOptions} />
-            </View>
-          ) : (
-            <View style={{ flex:1 }}>
-              <Select value={selectedSubject} onChange={setSelectedSubject} placeholder="주제" options={subjectOptions} />
-            </View>
+          {(selectedSido !== 'all' && selectedSido !== '온라인' && availableSigungu.length > 0) && (
+            <Select value={selectedSubject} onChange={setSelectedSubject} placeholder="주제" options={subjectOptions} />
           )}
         </View>
 
-        {(selectedSido !== 'all' && selectedSido !== '온라인' && availableSigungu.length > 0) && (
-          <Select value={selectedSubject} onChange={setSelectedSubject} placeholder="주제" options={subjectOptions} />
+        <SegmentTabs value={tab} onChange={setTab} tabs={[{ value: 'all', label: '전체' }, { value: 'my', label: '내 스터디' }, { value: 'favorites', label: '찜' },]} />
+
+        {/* Lists */}
+        {tab==='all' && (
+          filteredStudies.length ? filteredStudies.map(study=>(
+            <StudyCard
+              key={study.id}
+              study={study}
+              isFavorite={favoriteIds.includes(study.id)}
+              onToggleFavorite={()=>{
+                setFavoriteIds(ids => ids.includes(study.id) ? ids.filter(x=>x!==study.id) : [...ids, study.id]);
+              }}
+            />
+          )) : (
+            <View style={S.empty}>
+              <Search size={48} color={theme.color.mutedText} />
+              <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>검색 결과가 없습니다.</Text>
+            </View>
+          )
         )}
-      </View>
 
-      {/* Tabs */}
-      <View style={S.tabs}>
-        <Pressable onPress={()=>setTab('all')} style={[S.tabBtn, tab==='all' && S.tabActive]}><Text style={[S.tabTxt, tab==='all' && S.tabTxtActive]}>전체</Text></Pressable>
-        <Pressable onPress={()=>setTab('my')} style={[S.tabBtn, tab==='my' && S.tabActive]}><Text style={[S.tabTxt, tab==='my' && S.tabTxtActive]}>내 스터디</Text></Pressable>
-        <Pressable onPress={()=>setTab('favorites')} style={[S.tabBtn, tab==='favorites' && S.tabActive]}><Text style={[S.tabTxt, tab==='favorites' && S.tabTxtActive]}>찜</Text></Pressable>
-      </View>
+        {tab==='my' && (
+          myStudies.length ? myStudies.map(study=>(
+            <StudyCard
+              key={study.id}
+              study={study}
+              showProgress
+              isFavorite={favoriteIds.includes(study.id)}
+              onToggleFavorite={()=>{
+                setFavoriteIds(ids => ids.includes(study.id) ? ids.filter(x=>x!==study.id) : [...ids, study.id]);
+              }}
+            />
+          )) : (
+            <View style={S.empty}>
+              <Users size={48} color={theme.color.mutedText} />
+              <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>참여 중인 스터디가 없습니다.</Text>
+            </View>
+          )
+        )}
 
-      {/* Lists */}
-      {tab==='all' && (
-        filteredStudies.length ? filteredStudies.map(study=>(
-          <StudyCard
-            key={study.id}
-            study={study}
-            isFavorite={favoriteIds.includes(study.id)}
-            onToggleFavorite={()=>{
-              setFavoriteIds(ids => ids.includes(study.id) ? ids.filter(x=>x!==study.id) : [...ids, study.id]);
-            }}
-          />
-        )) : (
-          <View style={S.empty}>
-            <Search size={48} color={theme.color.mutedText} />
-            <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>검색 결과가 없습니다.</Text>
-          </View>
-        )
-      )}
+        {tab==='favorites' && (
+          filteredStudies.filter(s=>favoriteIds.includes(s.id)).length ? filteredStudies.filter(s=>favoriteIds.includes(s.id)).map(study=>(
+            <StudyCard
+              key={study.id}
+              study={study}
+              isFavorite
+              onToggleFavorite={()=>{
+                setFavoriteIds(ids => ids.filter(x=>x!==study.id));
+              }}
+            />
+          )) : (
+            <View style={S.empty}>
+              <Heart size={48} color={theme.color.mutedText} />
+              <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>찜한 스터디가 없습니다.</Text>
+            </View>
+          )
+        )}
 
-      {tab==='my' && (
-        myStudies.length ? myStudies.map(study=>(
-          <StudyCard
-            key={study.id}
-            study={study}
-            showProgress
-            isFavorite={favoriteIds.includes(study.id)}
-            onToggleFavorite={()=>{
-              setFavoriteIds(ids => ids.includes(study.id) ? ids.filter(x=>x!==study.id) : [...ids, study.id]);
-            }}
-          />
-        )) : (
-          <View style={S.empty}>
-            <Users size={48} color={theme.color.mutedText} />
-            <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>참여 중인 스터디가 없습니다.</Text>
-          </View>
-        )
-      )}
-
-      {tab==='favorites' && (
-        filteredStudies.filter(s=>favoriteIds.includes(s.id)).length ? filteredStudies.filter(s=>favoriteIds.includes(s.id)).map(study=>(
-          <StudyCard
-            key={study.id}
-            study={study}
-            isFavorite
-            onToggleFavorite={()=>{
-              setFavoriteIds(ids => ids.filter(x=>x!==study.id));
-            }}
-          />
-        )) : (
-          <View style={S.empty}>
-            <Heart size={48} color={theme.color.mutedText} />
-            <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>찜한 스터디가 없습니다.</Text>
-          </View>
-        )
-      )}
-
-      <View style={{ height: 20 }} />
+        <View style={{ height: 20 }} />
+      </ScrollView>
     </Screen>
   );
 }
@@ -321,9 +323,7 @@ function StudyCard({
               <Text style={{ fontSize: 12 }}>진행률</Text>
               <Text style={{ fontSize: 12 }}>{study.progress}%</Text>
             </View>
-            <View style={{ width:'100%', backgroundColor: theme.color.secondary, borderRadius: 999, height: 8, overflow:'hidden' }}>
-              <View style={{ backgroundColor: theme.color.primary, height: 8, borderRadius: 999, width: `${study.progress}%` as any }} />
-            </View>
+            <ProgressBar value={study.progress} />
           </CardContent>
         )}
       </Card>
@@ -334,13 +334,5 @@ function StudyCard({
 const S = StyleSheet.create({
   header: { borderBottomWidth:1, borderBottomColor: theme.color.border, paddingBottom: 8 },
   logo: { fontSize: 20, fontWeight: '700', color: theme.color.text },
-  tabs: {
-    flexDirection:'row', alignItems:'center', justifyContent:'space-between',
-    borderWidth:1, borderColor: theme.color.border, borderRadius: 8, overflow:'hidden', marginBottom: 12
-  },
-  tabBtn:{ flex:1, alignItems:'center', paddingVertical:10, backgroundColor:'#fff' },
-  tabActive:{ backgroundColor: theme.color.secondary },
-  tabTxt:{ color: theme.color.mutedText, fontSize: 14, fontWeight:'600' },
-  tabTxtActive:{ color: theme.color.text },
   empty:{ alignItems:'center', paddingVertical: 32 },
 });

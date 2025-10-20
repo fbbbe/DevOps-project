@@ -12,6 +12,7 @@ import theme from '../styles/theme';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/Card';
 import Button from '../components/Button';
 import Badge from '../components/Badge';
+import ProgressBar from '../components/ProgressBar';
 import {
   ArrowLeft, MapPin, Users, Calendar, Clock, Tag, QrCode,
   BarChart3, Settings, MessageCircle, BookOpen, AlertTriangle, UserX
@@ -200,9 +201,7 @@ export default function StudyDetailScreen({ route, navigation }: any) {
                   <Text style={{ fontSize: 12 }}>전체 진행률</Text>
                   <Text style={{ fontSize: 12, fontWeight:'600' }}>{study.progress}%</Text>
                 </View>
-                <View style={{ width:'100%', height: 8, backgroundColor: theme.color.secondary, borderRadius:999, overflow:'hidden' }}>
-                  <View style={{ height: 8, width: `${study.progress}%` as any, backgroundColor: theme.color.primary, borderRadius: 999 }} />
-                </View>
+                <ProgressBar value={study.progress} style={{ marginTop: 8 }} />
               </View>
             )}
           </CardContent>

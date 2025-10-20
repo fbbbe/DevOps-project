@@ -16,6 +16,8 @@ import theme from '../styles/theme';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Badge from '../components/Badge';
+import ProgressBar from '../components/ProgressBar';
+import SegmentTabs from '../components/SegmentTabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/Card';
 import { BookOpen, ArrowLeft, LogOut, TrendingUp, Trophy, Shield, Bell, MessageCircle, Edit, Save, X } from 'lucide-react-native';
 
@@ -130,9 +132,9 @@ export default function ProfileScreen({ route, navigation }: any) {
   };
 
   const onLogout = () => Alert.alert('로그아웃', '로그아웃 하시겠어요?', [
-    { text: '취소', style: 'cancel' },
-    { text: '로그아웃', style: 'destructive', onPress: () => navigation?.reset?.({ index: 0, routes: [{ name: '홈' }] }) },
-  ]);
+   { text: '취소', style: 'cancel' },
+   { text: '로그아웃', style: 'destructive', onPress: () => navigation?.reset?.({ index: 0, routes: [{ name: '로그인' }] }) },
+ ]);
 
   const AvatarFallback = ({ name }: { name: string }) => (
     <View style={S.avatar}>
@@ -226,23 +228,21 @@ export default function ProfileScreen({ route, navigation }: any) {
                 <Text style={{ fontSize: 16, fontWeight:'700', color: theme.color.primary, marginBottom: 6 }}>
                   평균 진행률: {averageProgressRate}%
                 </Text>
-                <View style={S.progressOuter}>
-                  <View style={[S.progressInner, { width: `${averageProgressRate}%` as any }]} />
-                </View>
+                <ProgressBar value={averageProgressRate} />
               </View>
             </CardContent>
           </Card>
 
           {/* Tabs: history / achievements */}
           <View style={{ marginTop: 12 }}>
-            <View style={S.tabs}>
-              <Pressable style={[S.tabBtn, tab==='history' && S.tabActive]} onPress={() => setTab('history')}>
-                <Text style={[S.tabTxt, tab==='history' && S.tabTxtActive]}>스터디 기록</Text>
-              </Pressable>
-              <Pressable style={[S.tabBtn, tab==='achievements' && S.tabActive]} onPress={() => setTab('achievements')}>
-                <Text style={[S.tabTxt, tab==='achievements' && S.tabTxtActive]}>성취</Text>
-              </Pressable>
-            </View>
+            <SegmentTabs 
+              value={tab}
+              onChange={(v)=>setTab(v as 'history'|'achievements')}
+              tabs={[
+                { value: 'history', label: '스터디 기록' },
+                { value: 'achievements', label: '성취' },
+              ]}
+            />
 
             {tab === 'history' ? (
               <View style={{ gap: 10 }}>
@@ -294,9 +294,7 @@ export default function ProfileScreen({ route, navigation }: any) {
 
                         {study.status === 'active' && (
                           <View style={{ marginTop: 8 }}>
-                            <View style={S.progressOuterSm}>
-                              <View style={[S.progressInner, { height: 6, width: `${study.progress}%` as any }]} />
-                            </View>
+                            <ProgressBar value={study.progress} height={6} />
                           </View>
                         )}
                       </CardContent>

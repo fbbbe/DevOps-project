@@ -16,6 +16,7 @@ import theme from '../styles/theme';
 import Button from '../components/Button';
 import Input from '../components/Input';
 import Badge from '../components/Badge';
+import ProgressBar from '../components/ProgressBar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/Card';
 import {
   ArrowLeft, BarChart3, TrendingUp, Calendar, Target, Plus, Edit, BookOpen,
@@ -124,12 +125,6 @@ export default function ProgressScreen({ route, navigation }: any) {
   };
 
   const editingSession = useMemo(() => progressData.find(p => p.id === editingId) || null, [editingId, progressData]);
-
-  const ProgressBar = ({ value }: { value: number }) => (
-    <View style={styles.progressOuter}>
-      <View style={[styles.progressInner, { width: `${clamp0to100(value)}%` as any }]} />
-    </View>
-  );
 
   return (
     <Screen withPadding={false}>
@@ -422,9 +417,6 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, color: theme.color.text, marginBottom: 6 },
   textareaWrap: { borderWidth: 1, borderColor: theme.color.border, borderRadius: 8, backgroundColor: '#fff' },
   textarea: { minHeight: 90, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: theme.color.text },
-
-  progressOuter: { width: '100%', height: 8, backgroundColor: theme.color.secondary, borderRadius: 999, overflow: 'hidden', marginTop: 6 },
-  progressInner: { height: 8, backgroundColor: theme.color.primary, borderRadius: 999 },
 
   statBox: { flex: 1, padding: 12, borderRadius: 12, alignItems: 'center' },
   statValue: { fontSize: 20, fontWeight: '700' },

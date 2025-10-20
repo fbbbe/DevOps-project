@@ -1,5 +1,16 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import DateTimePicker, { AndroidEvent, DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Screen from '../components/Screen';
 import Input from '../components/Input';
 import Button from '../components/Button';
@@ -14,61 +25,93 @@ import { ArrowLeft, BookOpen, Plus, X } from 'lucide-react-native';
 type StudyType = 'online' | 'offline';
 type DurationType = 'short' | 'long';
 
+const fmt = (d: Date) => {
+  // YYYY-MM-DD
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
 export default function CreateStudyScreen({ navigation }: any) {
-  // ---- form state (빈 문자열 대신 null 사용: placeholder 안전) ----
+  const insets = useSafeAreaInsets();
+
+  // ---- form state (placeholder는 null 사용; "" 금지) ----
   const [name, setName] = useState('');
   const [subject, setSubject] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
-  const [type, setType] = useState<StudyType | null>(null);
 
+  const [type, setType] = useState<StudyType | null>(null);
   const [sido, setSido] = useState<string | null>(null);
   const [sigungu, setSigungu] = useState<string | null>(null);
   const [dongEupMyeon, setDongEupMyeon] = useState('');
 
   const [duration, setDuration] = useState<DurationType | null>(null);
+  // ✅ 동시 선택 허용
   const [weekDuration, setWeekDuration] = useState<string | null>(null);
   const [dayDuration, setDayDuration] = useState<string | null>(null);
-
   const [maxMembers, setMaxMembers] = useState<number>(6);
-  const [startDate, setStartDate] = useState(''); // YYYY-MM-DD (간단 입력)
-  const [endDate, setEndDate] = useState('');
+
+  const today = useMemo(() => new Date(), []);
+  const oneWeekLater = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d;
+  }, []);
+  // ✅ DatePicker 사용 (Date 객체 보관)
+  const [startDate, setStartDate] = useState<Date>(today);
+  const [endDate, setEndDate] = useState<Date>(oneWeekLater);
+
+  // DatePicker 표시 여부
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+
+  // Android 전용: 시스템 피커 열기
+  const openAndroidPicker = (which: 'start' | 'end') => {
+    DateTimePickerAndroid.open({
+      value: which === 'start' ? startDate : endDate,
+      mode: 'date',
+      onChange: (_e, date) => {
+        if (!date) return;
+        which === 'start' ? setStartDate(date) : setEndDate(date);
+      },
+      minimumDate: which === 'end' ? startDate : undefined,
+    });
+  };
 
   // ---- derived ----
   const availableSigungu = useMemo(() => (sido ? KOREA_REGIONS[sido] ?? [] : []), [sido]);
-
-  const subjectOptions: Option[] = useMemo(() => [
-    // placeholder는 Select 내부에서 처리 (value=null) — 항목엔 빈 문자열 금지
-    ...STUDY_SUBJECTS.map(s => ({ label: s.label, value: s.value })),
-  ], []);
-
-  const sidoOptions: Option[] = useMemo(() => Object.keys(KOREA_REGIONS).map(s => ({ label: s, value: s })), []);
-  const sigunguOptions: Option[] = useMemo(() => availableSigungu.map(g => ({ label: g, value: g })), [availableSigungu]);
-
-  const maxMemberOptions: Option[] = useMemo(
-    () => [4,5,6,7,8,9,10,12,15,20].map(n => ({ label: `${n}명`, value: String(n) })),
+  const subjectOptions: Option[] = useMemo(
+    () => STUDY_SUBJECTS.map(s => ({ label: s.label, value: s.value })),
     []
+  );
+  const sidoOptions: Option[] = useMemo(
+    () => Object.keys(KOREA_REGIONS).map(s => ({ label: s, value: s })),
+    []
+  );
+  const sigunguOptions: Option[] = useMemo(
+    () => availableSigungu.map(g => ({ label: g, value: g })),
+    [availableSigungu]
+  );
+  const maxMemberOptions: Option[] = useMemo(
+    () => [4,5,6,7,8,9,10,12,15,20].map(n => ({ label: `${n}명`, value: String(n) })), []
   );
   const weekOptions: Option[] = useMemo(
-    () => Array.from({ length: 12 }, (_, i) => i + 1).map(w => ({ label: `${w}주`, value: String(w) })),
-    []
+    () => Array.from({ length: 12 }, (_, i) => i + 1).map(w => ({ label: `${w}주`, value: String(w) })), []
   );
   const dayOptions: Option[] = useMemo(
-    () => [7,14,21,30,45,60,90].map(d => ({ label: `${d}일`, value: String(d) })),
-    []
+    () => [7,14,21,30,45,60,90].map(d => ({ label: `${d}일`, value: String(d) })), []
   );
 
-  // ---- handlers ----
+  // ---- helpers ----
   const addTag = () => {
     const t = newTag.trim();
-    if (!t) return;
-    if (tags.includes(t)) return;
-    if (tags.length >= 5) return;
+    if (!t || tags.includes(t) || tags.length >= 5) return;
     setTags(prev => [...prev, t]);
     setNewTag('');
   };
-
   const removeTag = (t: string) => setTags(prev => prev.filter(x => x !== t));
 
   const onChangeSido = (v: string) => {
@@ -77,33 +120,62 @@ export default function CreateStudyScreen({ navigation }: any) {
     setDongEupMyeon('');
   };
 
+  // ✅ 동시 선택 불가(택1): 하나 고르면 다른 하나는 비움
+  const onChangeWeek = (v: string | null) => {
+    setWeekDuration(v);
+    if (v) setDayDuration(null);
+  };
+  const onChangeDay = (v: string | null) => {
+    setDayDuration(v);
+    if (v) setWeekDuration(null);
+  };
+
+  const datesOk = startDate.getTime() <= endDate.getTime();
+
+  const canSubmit =
+    !!name.trim() &&
+    !!subject &&
+    !!description.trim() &&
+    !!type &&
+    (type === 'online' || (!!sido && !!sigungu && !!dongEupMyeon.trim())) &&
+    !!duration &&
+    datesOk &&
+    // ✅ 단기면 주/일 중 최소 1개 이상 선택, 둘 다 선택도 OK
+    (duration === 'long' || (!!weekDuration || !!dayDuration));
+
+  // ---- DatePicker 핸들러 ----
+  const onAndroidPick = (which: 'start' | 'end') => (_e: AndroidEvent, date?: Date) => {
+    if (date) {
+      which === 'start' ? setStartDate(date) : setEndDate(date);
+    }
+    // 안드로이드는 다이얼로그가 자동 닫힘
+    which === 'start' ? setShowStartPicker(false) : setShowEndPicker(false);
+  };
+  const onIOSPick = (which: 'start' | 'end') => (_e: any, date?: Date) => {
+    if (date) which === 'start' ? setStartDate(date) : setEndDate(date);
+  };
+
+  // ---- submit ----
   const submit = () => {
-    // ---- validation (웹과 동일 정책) ----
-    if (!name || !subject || !description) {
-      Alert.alert('확인', '필수 정보를 모두 입력해주세요');
-      return;
-    }
-    if (!type) {
-      Alert.alert('확인', '진행 방식을 선택해주세요');
-      return;
-    }
-    if (type === 'offline') {
-      if (!sido || !sigungu || !dongEupMyeon) {
-        Alert.alert('확인', '지역 정보를 모두 입력해주세요');
-        return;
+    if (!canSubmit) {
+      if (!datesOk) {
+        Alert.alert('확인', '날짜를 확인하세요 (시작일은 종료일 이전/같아야 합니다)');
+      } else {
+        Alert.alert('확인', '필수 정보를 모두 입력해주세요');
       }
-    }
-    if (!duration || !startDate || !endDate) {
-      Alert.alert('확인', '진행 기간 정보를 모두 입력해주세요');
       return;
     }
 
-    // mock create
     const payload = {
       name, subject, description, tags,
-      type, regionDetail: type === 'offline' ? { sido, sigungu, dongEupMyeon } : undefined,
-      duration, weekDuration, dayDuration,
-      maxMembers, startDate, endDate,
+      type,
+      regionDetail: type === 'offline' ? { sido, sigungu, dongEupMyeon } : undefined,
+      duration,
+      weekDuration, // string|null
+      dayDuration,  // string|null
+      maxMembers,
+      startDate: fmt(startDate),
+      endDate: fmt(endDate),
     };
     console.log('Creating study:', payload);
     Alert.alert('성공', '스터디가 성공적으로 생성되었습니다!', [
@@ -111,7 +183,6 @@ export default function CreateStudyScreen({ navigation }: any) {
     ]);
   };
 
-  // ---- small helpers UI ----
   const SegButton = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => (
     <Button
       variant={active ? 'secondary' : 'outline'}
@@ -125,7 +196,7 @@ export default function CreateStudyScreen({ navigation }: any) {
 
   return (
     <Screen>
-      {/* Sticky-like header */}
+      {/* Header */}
       <View style={S.header}>
         <Button variant="ghost" size="sm" onPress={() => navigation?.goBack?.()} style={{ paddingHorizontal: 8 }}>
           <ArrowLeft size={16} color={theme.color.text} />
@@ -138,42 +209,40 @@ export default function CreateStudyScreen({ navigation }: any) {
       </View>
 
       <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={{ flex:1 }}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 96 }}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 96 + insets.bottom }}
+        >
           {/* 기본 정보 */}
           <Card style={{ marginTop: 12 }}>
             <CardHeader>
-              <CardTitle className="text-base">기본 정보</CardTitle>
+              <CardTitle style={{ fontSize: 16 }}>기본 정보</CardTitle>
               <CardDescription>스터디의 기본 정보를 입력하세요</CardDescription>
             </CardHeader>
             <CardContent style={{ gap: 12 }}>
-              {/* 이름 */}
               <View>
                 <Text style={S.label}>스터디 이름 *</Text>
                 <Input placeholder="예: 토익 900점 달성하기" value={name} onChangeText={setName} />
               </View>
 
-              {/* 주제 */}
               <View>
                 <Text style={S.label}>주제 *</Text>
                 <Select value={subject} onChange={setSubject} placeholder="주제를 선택하세요" options={subjectOptions} />
               </View>
 
-              {/* 설명 */}
               <View>
                 <Text style={S.label}>설명 *</Text>
                 <View style={S.textareaWrap}>
-                  <TextInput
+                  <Input
+                    multiline
+                    style={S.textarea}
                     placeholder="스터디에 대한 자세한 설명을 입력하세요"
                     value={description}
                     onChangeText={setDescription}
-                    multiline
-                    style={S.textarea}
-                    placeholderTextColor={theme.color.mutedText}
                   />
                 </View>
               </View>
 
-              {/* 태그 */}
               <View>
                 <Text style={S.label}>태그 (최대 5개)</Text>
                 <View style={{ flexDirection:'row', gap:8, marginBottom: 8 }}>
@@ -192,7 +261,7 @@ export default function CreateStudyScreen({ navigation }: any) {
                     <Badge key={tag} variant="outline" style={{ paddingRight: 4 }}>
                       <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
                         <Text style={{ fontSize: 12 }}>{tag}</Text>
-                        <Button variant="ghost" size="sm" onPress={() => removeTag(tag)} style={{ padding: 4 }}>
+                        <Button variant="ghost" size="sm" onPress={() => setTags(prev => prev.filter(x => x !== tag))} style={{ padding: 4 }}>
                           <X size={12} color={theme.color.text} />
                         </Button>
                       </View>
@@ -206,10 +275,9 @@ export default function CreateStudyScreen({ navigation }: any) {
           {/* 장소 및 방식 */}
           <Card style={{ marginTop: 12 }}>
             <CardHeader>
-              <CardTitle className="text-base">장소 및 방식</CardTitle>
+              <CardTitle style={{ fontSize: 16 }}>장소 및 방식</CardTitle>
             </CardHeader>
             <CardContent style={{ gap: 12 }}>
-              {/* 진행 방식 (세그먼트 토글로 라디오 표현) */}
               <View>
                 <Text style={S.label}>진행 방식 *</Text>
                 <View style={S.segment}>
@@ -218,22 +286,20 @@ export default function CreateStudyScreen({ navigation }: any) {
                 </View>
               </View>
 
-              {/* 오프라인일 때만 지역 표시 */}
               {type === 'offline' && (
                 <View style={{ gap: 12, backgroundColor: '#f6f7fa', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.color.border }}>
-                  {/* 시/도 */}
                   <View>
                     <Text style={S.label}>시/도 *</Text>
                     <Select value={sido} onChange={onChangeSido} placeholder="시/도를 선택하세요" options={sidoOptions} />
                   </View>
-                  {/* 시/군/구 */}
+
                   {sido && (
                     <View>
                       <Text style={S.label}>시/군/구 *</Text>
                       <Select value={sigungu} onChange={setSigungu} placeholder="시/군/구를 선택하세요" options={sigunguOptions} />
                     </View>
                   )}
-                  {/* 동/읍/면 */}
+
                   {sido && sigungu && (
                     <View>
                       <Text style={S.label}>동/읍/면 *</Text>
@@ -243,12 +309,20 @@ export default function CreateStudyScreen({ navigation }: any) {
                 </View>
               )}
 
-              {/* 최대 인원 */}
               <View>
                 <Text style={S.label}>최대 인원</Text>
                 <Select
                   value={String(maxMembers)}
-                  onChange={(v) => setMaxMembers(parseInt(v, 10))}
+                  onChange={(v) => {
+                    if (!v) return;
+                    const n = parseInt(v, 10);
+                    if (!Number.isNaN(n)) {
+                      // 최소 2, 최대 50 같은 정책 넣고 싶으면 여기서 clamp
+                      // const c = Math.min(50, Math.max(2, n));
+                      // setMaxMembers(c);
+                      setMaxMembers(n);
+                    }
+                  }}
                   options={maxMemberOptions}
                   placeholder="선택"
                 />
@@ -259,10 +333,9 @@ export default function CreateStudyScreen({ navigation }: any) {
           {/* 진행 기간 */}
           <Card style={{ marginTop: 12 }}>
             <CardHeader>
-              <CardTitle className="text-base">진행 기간</CardTitle>
+              <CardTitle style={{ fontSize: 16 }}>진행 기간</CardTitle>
             </CardHeader>
             <CardContent style={{ gap: 12 }}>
-              {/* 기간 유형 */}
               <View>
                 <Text style={S.label}>기간 유형 *</Text>
                 <View style={S.segment}>
@@ -271,43 +344,84 @@ export default function CreateStudyScreen({ navigation }: any) {
                 </View>
               </View>
 
-              {/* 단기 설정 */}
               {duration === 'short' && (
                 <View style={{ gap: 12, backgroundColor: '#f6f7fa', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.color.border }}>
                   <Text style={{ fontSize: 12, color: theme.color.mutedText }}>
-                    단기 스터디는 주 단위 또는 일 단위로 기간을 설정할 수 있습니다.
+                    단기 스터디는 <Text style={{ fontWeight:'700', color: theme.color.text }}>주 단위</Text>와 <Text style={{ fontWeight:'700', color: theme.color.text }}>일 단위</Text> 중 <Text style={{ fontWeight:'700', color: theme.color.text }}>하나만 설정</Text>할 수 있습니다. (택1)
                   </Text>
                   <View style={{ flexDirection:'row', gap:12 }}>
                     <View style={{ flex:1 }}>
                       <Text style={S.label}>주 단위 기간</Text>
-                      <Select value={weekDuration} onChange={setWeekDuration} placeholder="주 선택" options={weekOptions} />
+                      <Select value={weekDuration} onChange={onChangeWeek} placeholder="주 선택" options={weekOptions} />
                     </View>
                     <View style={{ flex:1 }}>
-                      <Text style={S.label}>또는 일 단위</Text>
-                      <Select value={dayDuration} onChange={setDayDuration} placeholder="일 선택" options={dayOptions} />
+                      <Text style={S.label}>일 단위 기간</Text>
+                      <Select value={dayDuration} onChange={onChangeDay} placeholder="일 선택" options={dayOptions} />
                     </View>
                   </View>
                 </View>
               )}
 
-              {/* 날짜 */}
+              {/* 날짜 선택 (DatePicker) */}
               <View style={{ flexDirection:'row', gap:12 }}>
                 <View style={{ flex:1 }}>
                   <Text style={S.label}>시작일 *</Text>
-                  <Input placeholder="YYYY-MM-DD" value={startDate} onChangeText={setStartDate} />
+                  <Pressable onPress={() => Platform.OS === 'android' ? openAndroidPicker('start') : setShowStartPicker(true)}>
+                    <View pointerEvents="none">
+                      <Input value={fmt(startDate)} editable={false} />
+                    </View>
+                  </Pressable>
+
+                  {showStartPicker && (
+                    Platform.OS === 'ios' ? (
+                      <View style={S.iosPicker}>
+                        <DateTimePicker
+                          value={startDate}
+                          mode="date"
+                          display="spinner"
+                          onChange={onIOSPick('start')}
+                        />
+                        <Button size="sm" onPress={() => setShowStartPicker(false)} style={{ alignSelf: 'flex-end' }}>
+                          완료
+                        </Button>
+                      </View>
+                    ) : null
+                  )}
                 </View>
+
                 <View style={{ flex:1 }}>
                   <Text style={S.label}>종료일 *</Text>
-                  <Input placeholder="YYYY-MM-DD" value={endDate} onChangeText={setEndDate} />
+                  <Pressable onPress={() => Platform.OS === 'android' ? openAndroidPicker('end') : setShowEndPicker(true)}>
+                    <View pointerEvents="none">
+                      <Input value={fmt(endDate)} editable={false} />
+                    </View>
+                  </Pressable>
+
+                  {showEndPicker && (
+                    Platform.OS === 'ios' ? (
+                      <View style={S.iosPicker}>
+                        <DateTimePicker
+                          value={endDate}
+                          mode="date"
+                          display="spinner"
+                          onChange={onIOSPick('end')}
+                          minimumDate={startDate}
+                        />
+                        <Button size="sm" onPress={() => setShowEndPicker(false)} style={{ alignSelf: 'flex-end' }}>
+                          완료
+                        </Button>
+                      </View>
+                    ) : null
+                  )}
                 </View>
               </View>
             </CardContent>
           </Card>
 
-          {/* 스터디장 정보 (웹은 user prop, RN은 추후 Auth 연동 시 표시) */}
+          {/* 스터디장 정보 (Auth 연동 시 자동 표시) */}
           <Card style={{ marginTop: 12 }}>
             <CardHeader>
-              <CardTitle className="text-base">스터디장 정보</CardTitle>
+              <CardTitle style={{ fontSize: 16 }}>스터디장 정보</CardTitle>
               <CardDescription>자동으로 표시됩니다</CardDescription>
             </CardHeader>
             <CardContent>
@@ -328,8 +442,8 @@ export default function CreateStudyScreen({ navigation }: any) {
       </KeyboardAvoidingView>
 
       {/* Submit footer */}
-      <View style={S.footer}>
-        <Button size="lg" onPress={submit} style={{ flex:1 }}>스터디 만들기</Button>
+      <View style={[S.footer, { paddingBottom: 12 + insets.bottom }]}>
+        <Button size="lg" onPress={submit} style={{ flex:1 }} disabled={!canSubmit}>스터디 만들기</Button>
       </View>
     </Screen>
   );
@@ -342,14 +456,21 @@ const S = StyleSheet.create({
     paddingVertical: 8, marginBottom: 8,
   },
   label: { fontSize: 12, color: theme.color.text, marginBottom: 6 },
-  textareaWrap: {
-    borderWidth: 1, borderColor: theme.color.border, borderRadius: 8, backgroundColor: '#fff',
-  },
+  textareaWrap: { borderWidth: 1, borderColor: theme.color.border, borderRadius: 8, backgroundColor: '#fff' },
   textarea: { minHeight: 100, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: theme.color.text },
   segment: { flexDirection:'row', gap:8 },
   footer: {
     position:'absolute', left:0, right:0, bottom:0,
     backgroundColor: theme.color.bg, borderTopWidth: 1, borderTopColor: theme.color.border,
     paddingHorizontal: 16, paddingVertical: 12,
+  },
+  iosPicker: {
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    padding: 8,
   },
 });
