@@ -249,7 +249,7 @@ export default function StudyDetailScreen({ route, navigation }: any) {
               {study.duration === 'short' ? (
                 <Button
                   variant="outline"
-                  onPress={() => Alert.alert('진행률', '진행률 화면은 다음 단계에서 추가 예정입니다.')}
+                  onPress={() => navigation?.navigate?.('진행률', { study, user })}
                   style={{ flex:1, flexDirection:'row', gap:8, alignItems:'center', justifyContent:'center' }}
                 >
                   <BarChart3 size={16} color={theme.color.text} />
@@ -262,7 +262,7 @@ export default function StudyDetailScreen({ route, navigation }: any) {
 
             <Button
               variant="default"
-              onPress={() => Alert.alert('채팅', '채팅 화면은 다음 단계에서 추가 예정입니다.')}
+              onPress={() => navigation?.navigate?.('채팅', { study, user })}
               style={{ flexDirection:'row', gap:8, alignItems:'center', justifyContent:'center' }}
             >
               <MessageCircle size={16} color={theme.color.onPrimary} />
