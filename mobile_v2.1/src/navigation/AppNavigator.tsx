@@ -6,7 +6,7 @@ import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Platform } from 'react-native';
+import { View, Platform } from 'react-native';
 import theme from '../styles/theme';
 
 import DashboardScreen from '../screens/DashboardScreen';
@@ -18,14 +18,16 @@ import StudyChatScreen from '../screens/StudyChatScreen';
 import ChatListScreen from '../screens/ChatListScreen';
 import LoginScreen from '../screens/LoginScreen';
 import StudyDetailScreen from '../screens/StudyDetailScreen';
-import { Home, Plus, CheckCircle2, User, MessageSquare } from 'lucide-react-native';
+import { Home, Plus, User, MessageSquare } from 'lucide-react-native';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function Tabs() {
   const insets = useSafeAreaInsets();
-  const BASE_HEIGHT = 56;
+
+  // 웹 h-16(≈64px) 기준
+  const BASE_HEIGHT = 64;
   const height = BASE_HEIGHT + insets.bottom;
   const padTop = Platform.select({ ios: 6, android: 4, default: 4 });
   const padBottom = Math.max(8, 8 + Math.floor(insets.bottom / 2));
@@ -34,8 +36,8 @@ function Tabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.color.primary,
-        tabBarInactiveTintColor: theme.color.mutedText,
+        tabBarActiveTintColor: theme.color.primary,       // text-primary
+        tabBarInactiveTintColor: theme.color.mutedText,   // text-muted-foreground
         tabBarHideOnKeyboard: true,
         tabBarLabelStyle: { fontSize: 12, marginTop: 0, marginBottom: 4 },
         tabBarItemStyle: { paddingVertical: 2 },
@@ -43,16 +45,24 @@ function Tabs() {
           height,
           paddingTop: padTop,
           paddingBottom: padBottom,
-          backgroundColor: theme.color.bg,
+          backgroundColor: theme.color.bg,    // bg-background
           borderTopWidth: 1,
-          borderTopColor: theme.color.border,
+          borderTopColor: theme.color.border, // border-t
         },
         sceneContainerStyle: { backgroundColor: theme.color.bg },
       }}
     >
-      <Tab.Screen name="홈" component={DashboardScreen} options={{ tabBarIcon: ({color, size}) => <Home color={color} size={size}/> }} />
-      <Tab.Screen name="생성" component={CreateStudyScreen} options={{ tabBarIcon: ({color, size}) => <Plus color={color} size={size}/> }} />
-      <Tab.Screen name="출석" component={AttendanceScreen} options={{ tabBarIcon: ({color, size}) => <CheckCircle2 color={color} size={size}/> }} />
+      {/* 1) 메인 */}
+      <Tab.Screen
+        name="홈"
+        component={DashboardScreen}
+        options={{
+          tabBarLabel: '메인',
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+        }}
+      />
+
+      {/* 2) 채팅 */}
       <Tab.Screen
         name="채팅목록"
         component={ChatListScreen}
@@ -61,7 +71,39 @@ function Tabs() {
           tabBarIcon: ({ color, size }) => <MessageSquare color={color} size={size} />,
         }}
       />
-      <Tab.Screen name="프로필" component={ProfileScreen} options={{ tabBarIcon: ({color, size}) => <User color={color} size={size}/> }} />
+
+      {/* 3) 만들기 — 중앙 둥근 + 버튼 */}
+      <Tab.Screen
+        name="생성"
+        component={CreateStudyScreen}
+        options={{
+          tabBarLabel: '만들기',
+          tabBarIcon: () => (
+            <View
+              style={{
+                marginTop: -8,                         // 웹 -mt-2 느낌
+                width: 44, height: 44, borderRadius: 22,
+                backgroundColor: theme.color.primary,  // bg-primary
+                alignItems: 'center', justifyContent: 'center',
+                // 선택: 더 띄워보이고 싶으면 아래 2줄 추가
+                // shadowColor: '#000', shadowOpacity: 0.15, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 6,
+              }}
+            >
+              <Plus size={24} color={theme.color.onPrimary} />
+            </View>
+          ),
+        }}
+      />
+
+      {/* 4) 마이 */}
+      <Tab.Screen
+        name="프로필"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: '마이',
+          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+        }}
+      />
     </Tab.Navigator>
   );
 }
