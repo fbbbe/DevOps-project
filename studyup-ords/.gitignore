@@ -1,0 +1,22 @@
+<<<<<<< HEAD
+/frontend_v1/node_modules
+/frontend_v1/package-lock.json
+
+/frontend_v2/node_modules
+/frontend_v2/package-lock.json
+
+/mobile/node_modules
+/mobile/package-lock.json
+=======
+# Never commit secrets
+Wallet_*.zip
+Wallet_*/
+ords-config/
+*.sso
+*.p12
+*.jks
+*.pem
+*.key
+*.cer
+*.crt
+>>>>>>> d9bd205 (upload project zip)

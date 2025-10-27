@@ -1,0 +1,10 @@
+name: ORDS Test
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Echo Test
+        run: echo "Study-UP ORDS pipeline connected successfully"
