@@ -1,9 +1,0 @@
-{
-  "expo": {
-    "name": "DevOps Mobile",
-    "slug": "devops-mobile",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "assetBundlePatterns": ["**/*"]
-  }
-}
