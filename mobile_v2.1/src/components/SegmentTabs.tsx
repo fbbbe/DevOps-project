@@ -1,47 +1,34 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ViewStyle, StyleSheet as RNSS } from 'react-native';
 import theme from '../styles/theme';
 
-export type SegmentTab = {
-  value: string;
-  label: string;
-  icon?: React.ReactNode;
-};
+export type SegmentTab = { value: string; label: string; icon?: React.ReactNode; };
 
 type Props = {
   value: string;
   onChange: (v: string) => void;
   tabs: SegmentTab[];
   style?: ViewStyle;
-  /** 높이(px). 웹 h-9 ≈ 36px */
   height?: number;
 };
 
-/**
- * 웹 tabs.tsx(TabsList/TabsTrigger) 톤을 RN으로 매핑한 세그먼트 탭
- * - 컨테이너: bg-muted 느낌(secondary), 라운드 XL, 내부 패딩 3px
- * - 탭: 활성 시 카드 배경(#fff) + 보더, 비활성은 투명
- */
 export default function SegmentTabs({
-  value,
-  onChange,
-  tabs,
-  style,
-  height = 36,
+  value, onChange, tabs, style, height = 36,
 }: Props) {
-  const pad = 3; // p-[3px]
-  const radius = 12; // rounded-xl
+  const pad = 3;
+  const radius = 12;
 
   return (
     <View
       style={[
         {
-          backgroundColor: theme.color.secondary, // 웹 bg-muted 톤
+          backgroundColor: theme.color.secondary,
           borderRadius: radius,
           padding: pad,
-          alignSelf: 'flex-start',
           flexDirection: 'row',
           gap: 6,
+          width: '100%',            // ✅ 가로 꽉
+          overflow: 'hidden',       // (옵션) 리플 클리핑
         },
         style,
       ]}
@@ -53,30 +40,32 @@ export default function SegmentTabs({
             key={t.value}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            onPress={() => onChange(t.value)}
+            onPress={() => { if (!active) onChange(t.value); }}
             style={[
               S.triggerBase,
               {
-                height: height - 1, // h-[calc(100%-1px)]
+                height: height - 1,
                 borderRadius: radius,
                 paddingHorizontal: 10,
+                flex: 1,              // ✅ 3등분 (동일 너비)
+                minWidth: 0,          // ✅ 텍스트 줄바꿈/잘림 안전
               },
-              active
-                ? {
-                    backgroundColor: '#fff', // 카드 배경
-                    borderColor: theme.color.border,
-                    borderWidth: 1,
-                  }
-                : null,
+              active && {
+                backgroundColor: '#fff',
+                borderColor: theme.color.border,
+                borderWidth: RNSS.hairlineWidth,
+              },
             ]}
           >
             {!!t.icon && <View style={{ marginRight: 6 }}>{t.icon}</View>}
             <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
               style={[
                 S.triggerText,
+                { textAlign: 'center' },                            // ✅ 라벨 가운데
                 active ? { color: theme.color.text } : { color: theme.color.mutedText },
               ]}
-              numberOfLines={1}
             >
               {t.label}
             </Text>
@@ -91,11 +80,11 @@ const S = StyleSheet.create({
   triggerBase: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center',   // 아이콘+텍스트 묶음 중앙
     gap: 6,
   },
   triggerText: {
-    fontSize: 14, // text-sm
+    fontSize: 14,
     fontWeight: '600',
   },
 });

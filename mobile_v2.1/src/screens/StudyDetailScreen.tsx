@@ -184,15 +184,26 @@ export default function StudyDetailScreen({ route, navigation }: any) {
               <Text style={S.rowTxt}>{study.startDate} ~ {study.endDate}</Text>
             </View>
 
-            <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6, marginTop: 8 }}>
-              {study.tags.map((tag) => (
-                <Badge key={tag} variant="outline">
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:4 }}>
-                    <Tag size={12} color={theme.color.text} />
-                    <Text style={{ fontSize: 12 }}>{tag}</Text>
-                  </View>
+            <View style={{ flexDirection:'row', flexWrap:'wrap', gap:4, marginTop: 8 }}>
+                {(study.tags ?? [])
+                    .filter(t => typeof t === 'string' && t.trim().length > 0)  // ✅ 빈 값 제거
+                     .map((tag, i) => (
+                       <Badge
+                          key={`${tag}-${i}`}
+                              variant="outline"
+                                 style={{
+                                  alignSelf: 'flex-start',   // ✅ flex로 늘어나지 않고 컨텐트만큼
+                                paddingVertical: 4,        // ✅ 세로 여백 축소
+                               paddingHorizontal: 8,      // ✅ 가로 여백 축소
+                               borderRadius: 12           // (선택) 더 타이트한 모서리
+                                }}
+                 >             {/* ✅ key 충돌 방지 */}
+                        <View style={{ flexDirection:'row', alignItems:'center', gap:2 }}>
+                           <Tag size={10} color={theme.color.text} />
+                           <Text style={{ fontSize: 12, lineHeight: 14, includeFontPadding: false }}>{tag}</Text>
+                   </View>
                 </Badge>
-              ))}
+                 ))}
             </View>
 
             {typeof study.progress === 'number' && (

@@ -1,109 +1,113 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+import {
+  Pressable,
+  View,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  GestureResponderEvent,
+} from 'react-native';
 import theme from '../styles/theme';
 
-type Variant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
-type Size = 'default' | 'sm' | 'lg' | 'icon';
+type Variant = 'default' | 'secondary' | 'destructive' | 'outline' | 'ghost';
+type Size = 'sm' | 'md' | 'lg' | 'icon';
 
 type Props = {
-  children: React.ReactNode;
-  onPress?: () => void;
-  disabled?: boolean;
   variant?: Variant;
   size?: Size;
+  disabled?: boolean;
   style?: ViewStyle | ViewStyle[];
+  onPress?: (e: GestureResponderEvent) => void;
+  children?: React.ReactNode;
 };
 
+/** 
+ * 변경점: 문자열/숫자 children을 자동으로 <Text>로 감싸도록 normalizeChildren 추가
+ * (이 한 줄이 RN의 “Text strings must be rendered within a <Text>” 오류를 없앱니다)
+ */
 export default function Button({
-  children,
-  onPress,
-  disabled = false,
   variant = 'default',
-  size = 'default',
+  size = 'md',
+  disabled = false,
   style,
+  onPress,
+  children,
 }: Props) {
-  const wrap = [
+  const textStyle = [
+    S.textBase,
+    variant === 'default' && { color: theme.color.onPrimary },
+    variant === 'secondary' && { color: theme.color.text },
+    variant === 'destructive' && { color: theme.color.onDestructive },
+    (variant === 'outline' || variant === 'ghost') && { color: theme.color.text },
+    size === 'sm' && { fontSize: 12 },
+    size === 'md' && { fontSize: 14 },
+    size === 'lg' && { fontSize: 16 },
+  ];
+
+  const containerStyle = [
     S.base,
-    size === 'default' && S.sizeDefault,
-    size === 'sm' && S.sizeSm,
-    size === 'lg' && S.sizeLg,
-    size === 'icon' && S.sizeIcon,
-    variant === 'default' && S.varDefault,
-    variant === 'destructive' && S.varDestructive,
-    variant === 'outline' && S.varOutline,
-    variant === 'secondary' && S.varSecondary,
-    variant === 'ghost' && S.varGhost,
-    variant === 'link' && S.varLink,
+    // size
+    size === 'sm' && { height: 32, paddingHorizontal: 10, borderRadius: 8 },
+    size === 'md' && { height: 40, paddingHorizontal: 12, borderRadius: 10 },
+    size === 'lg' && { height: 48, paddingHorizontal: 14, borderRadius: 12 },
+    size === 'icon' && { width: 44, height: 44, borderRadius: 12, paddingHorizontal: 0 },
+    // variant
+    variant === 'default' && { backgroundColor: theme.color.primary, borderColor: theme.color.primary, borderWidth: 1 },
+    variant === 'secondary' && { backgroundColor: theme.color.secondary, borderColor: theme.color.border, borderWidth: 1 },
+    variant === 'destructive' && { backgroundColor: theme.color.destructive, borderColor: theme.color.destructive, borderWidth: 1 },
+    variant === 'outline' && { backgroundColor: '#fff', borderColor: theme.color.border, borderWidth: 1 },
+    variant === 'ghost' && { backgroundColor: 'transparent' },
     disabled && { opacity: 0.5 },
     style,
   ];
 
-  const textStyle =
-    variant === 'default'
-      ? S.textOnPrimary
-      : variant === 'destructive'
-      ? S.textOnDestructive
-      : variant === 'link'
-      ? S.textLink
-      : S.textDefault;
+  // 🔧 핵심 수정: 문자열/숫자 child는 Text로 감싸기
+  const normalizeChildren = (nodes: React.ReactNode) =>
+    React.Children.map(nodes, (child, i) => {
+      if (typeof child === 'string' || typeof child === 'number') {
+        return (
+          <Text key={i} style={textStyle} numberOfLines={1}>
+            {child}
+          </Text>
+        );
+      }
+      return child as React.ReactElement;
+    });
 
   return (
-    <Pressable onPress={onPress} disabled={disabled} style={({ pressed }) => [wrap, pressed && { opacity: 0.9 }]}>
-      <Text style={textStyle}>{children}</Text>
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={containerStyle}
+    >
+      <View
+        style={[
+          S.inner,
+          size === 'icon' && { paddingHorizontal: 0 },
+        ]}
+      >
+        {/* icon 버튼은 보통 아이콘만 들어오므로 children 그대로; 
+            일반 버튼은 normalize로 문자열을 Text로 감쌈 */}
+        {size === 'icon' ? children : normalizeChildren(children)}
+      </View>
     </Pressable>
   );
 }
 
 const S = StyleSheet.create({
   base: {
-    // inline-flex center + rounded-md + text-sm + transition + disabled style
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderRadius: 8, // rounded-md
-    borderWidth: 1,
-    borderColor: 'transparent',
-    paddingHorizontal: 16, // px-4
-    // text-sm는 실제 Text에서 처리하지만 전체 높이를 맞추기 위해 size에서 h-* 적용
   },
-  // sizes
-  sizeDefault: { height: 36, paddingVertical: 8 }, // h-9
-  sizeSm: { height: 32, paddingHorizontal: 12, paddingVertical: 6 }, // h-8
-  sizeLg: { height: 40, paddingHorizontal: 24, paddingVertical: 8 }, // h-10
-  sizeIcon: { width: 36, height: 36, borderRadius: 8, padding: 0 },
-
-  // variants
-  varDefault: {
-    backgroundColor: theme.color.primary,
-    borderColor: theme.color.primary,
+  textBase: {
+    fontWeight: '600',
   },
-  varDestructive: {
-    backgroundColor: theme.color.destructive,
-    borderColor: theme.color.destructive,
-  },
-  varOutline: {
-    backgroundColor: theme.color.bg,
-    borderColor: theme.color.border,
-  },
-  varSecondary: {
-    backgroundColor: theme.color.secondary,
-    borderColor: theme.color.border,
-  },
-  varGhost: {
-    backgroundColor: theme.color.ghostBg,
-    borderColor: 'transparent',
-  },
-  varLink: {
-    backgroundColor: 'transparent',
-    borderColor: 'transparent',
-    paddingHorizontal: 0,
-    height: undefined,
-  },
-
-  // text colors
-  textOnPrimary: { color: theme.color.onPrimary, fontSize: 14, fontWeight: '600' },
-  textOnDestructive: { color: theme.color.onDestructive, fontSize: 14, fontWeight: '600' },
-  textDefault: { color: theme.color.text, fontSize: 14, fontWeight: '600' },
-  textLink: { color: theme.color.link, fontSize: 14, fontWeight: '600', textDecorationLine: 'underline' },
 });

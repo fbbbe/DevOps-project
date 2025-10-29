@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, KeyboardAvoidingView,
-  Platform
+  Platform, TextInput, Keyboard
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Screen from '../components/Screen';
 import theme from '../styles/theme';
 import { Card, CardContent } from '../components/Card';
 import Button from '../components/Button';
-import Input from '../components/Input';
 import { ArrowLeft, Send, BookOpen } from 'lucide-react-native';
 
 export type Study = {
@@ -59,6 +58,25 @@ export default function StudyChatScreen({ route, navigation }: any) {
   const [newMessage, setNewMessage] = useState('');
   const scrollRef = useRef<ScrollView>(null);
 
+  // ✅ 입력창 자동 높이 증가
+  const MIN_H = 44;
+  const MAX_H = 140;
+  const [tiHeight, setTiHeight] = useState(MIN_H);
+  const onInputSize = (e: any) => {
+    const h = Math.ceil(e.nativeEvent.contentSize.height);
+    setTiHeight(Math.min(MAX_H, Math.max(MIN_H, h)));
+  };
+
+  // ✅ 키보드 표시 여부 감지 → 키보드 올라올 때 bottom safe-area 패딩 제거
+  const [kbVisible, setKbVisible] = useState(false);
+  useEffect(() => {
+    const show = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hide = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const s = Keyboard.addListener(show, () => setKbVisible(true));
+    const h = Keyboard.addListener(hide, () => setKbVisible(false));
+    return () => { s.remove(); h.remove(); };
+  }, []);
+
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
@@ -78,6 +96,7 @@ export default function StudyChatScreen({ route, navigation }: any) {
     };
     setMessages(prev => [...prev, msg]);
     setNewMessage('');
+    setTiHeight(MIN_H);
   };
 
   const formatTime = (date: Date) => {
@@ -106,7 +125,7 @@ export default function StudyChatScreen({ route, navigation }: any) {
       arr.push(msg);
       map.set(key, arr);
     });
-    return Array.from(map.entries()); // [ [date, msgs], ... ]
+    return Array.from(map.entries());
   }, [messages]);
 
   const AvatarFallback = ({ name }: { name: string }) => (
@@ -132,10 +151,10 @@ export default function StudyChatScreen({ route, navigation }: any) {
         <View style={{ width:32 }} />
       </View>
 
-      {/* ✅ 스크롤 + 입력바 모두를 KAV로 감싼다 */}
+      {/* 스크롤 + 입력바를 함께 감싸서 키보드 대응 */}
       <KeyboardAvoidingView
         behavior={Platform.select({ ios: 'padding', android: 'height' })}
-        keyboardVerticalOffset={insets.top + 48}  // 헤더 높이 보정
+        keyboardVerticalOffset={insets.top + 48}
         style={{ flex: 1 }}
       >
         <View style={{ flex: 1 }}>
@@ -143,7 +162,7 @@ export default function StudyChatScreen({ route, navigation }: any) {
           <ScrollView
             ref={scrollRef}
             style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 16 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: 16 }}
             onContentSizeChange={scrollToBottom}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -189,17 +208,27 @@ export default function StudyChatScreen({ route, navigation }: any) {
             ))}
           </ScrollView>
 
-          {/* ✅ absolute 제거: 일반 레이아웃 하단 고정 + Safe Area 패딩 */}
-          <View style={[S.footer, { paddingBottom: 12 + insets.bottom }]}>
-            <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-              <Input
+          {/* 하단 입력 바: 가로 꽉 + 자동 줄바꿈 + 세로 자동 증가 */}
+          <View
+            style={[
+              S.footer,
+              {paddingTop: kbVisible ? 6 : 12,
+        paddingBottom: kbVisible ? 0 : 12 + insets.bottom, } // ✅ 키보드 보일 땐 여분 패딩 제거
+            ]}
+          >
+            <View style={{ flexDirection:'row', alignItems:'flex-end', gap:8 }}>
+              <TextInput
+                multiline
                 value={newMessage}
                 onChangeText={setNewMessage}
+                onContentSizeChange={onInputSize}
+                style={[S.input, { height: tiHeight }]}
                 placeholder="메시지를 입력하세요..."
-                style={{ flex:1 }}
-                returnKeyType="send"
+                placeholderTextColor={theme.color.mutedText}
+                textAlignVertical="top"
+                scrollEnabled={tiHeight >= MAX_H}
+                returnKeyType="default"
                 blurOnSubmit={false}
-                onSubmitEditing={handleSend}
                 onFocus={scrollToBottom}
               />
               <Button
@@ -243,5 +272,20 @@ const S = StyleSheet.create({
   footer: {
     borderTopWidth:1, borderTopColor: theme.color.border,
     backgroundColor: theme.color.bg, padding: 12,
+  },
+  input: {
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 140,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    backgroundColor: '#fff',
+    color: theme.color.text,
+    fontSize: 16,
+    lineHeight: 20,
+    includeFontPadding: false,
   },
 });
