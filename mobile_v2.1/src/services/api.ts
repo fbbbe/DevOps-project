@@ -1,22 +1,51 @@
-// 기본 설정 (baseURL 등) 이 포함된 API 서비스 모듈
+// src/services/api.ts
 
-// 예시
-import axios from "axios";
+// ORDS 서버의 베이스 URL.
+// 실제 ORDS 주소에 맞게 바꿔야 함.
+// - 로컬 PC에서 ORDS 실행 중이고 Android 에뮬레이터로 접근한다면 예: http://10.0.2.2:8080/ords/studyup
+// - 원격 서버라면 예: https://your-server/ords/studyup
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  "http://10.0.2.2:8080/ords/studyup";
 
-const api = axios.create({
-  baseURL: "https://your-server.com/ords/hr",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+export type ApiRequestOptions = {
+  method?: string;
+  token?: string;
+  body?: any;
+};
 
-// 요청 전 토큰 자동 추가
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+async function request<T = any>(
+  path: string,
+  { method = "GET", token, body }: ApiRequestOptions = {}
+): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!res.ok) {
+    // 서버에서 에러 메시지를 JSON으로 줄 수도 있고 없을 수도 있음
+    let detail = "";
+    try {
+      const errJson = await res.json();
+      detail = errJson.message || JSON.stringify(errJson);
+    } catch {
+      detail = await res.text();
+    }
+    throw new Error(`[${res.status}] ${detail}`);
   }
-  return config;
-});
 
-export default api;
+  // 204 같은 빈 응답 방어
+  const text = await res.text();
+  if (!text) return null as T;
+
+  return JSON.parse(text) as T;
+}
+
+export default {
+  request,
+};
