@@ -1,19 +1,40 @@
 // src/services/authService.ts
-import api from "./api";
 
-export type LoginResponse = {
-  user_id: string;
-  nickname: string;
-  token: string;
-};
+const BASE_URL = "http://192.168.0.34:8181"; // 예: http://192.168.0.5:8181
+// 반드시 실제 폰에서 백엔드에 접근 가능한 LAN IP로 적어. localhost 쓰면 안 됨(폰은 너 컴퓨터 아님)
 
-export async function login(email: string, password: string) {
-  // ORDS에서 /auth/login 같은 엔드포인트를 제공한다고 가정
-  // body와 응답 구조는 실제 ORDS 쪽에서 맞춰줘야 함
-  const data = await api.request<LoginResponse>("/auth/login", {
+export async function signUp(email: string, password: string, nickname: string) {
+  const res = await fetch(`${BASE_URL}/api/signup`, {
     method: "POST",
-    body: { email, password },
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password, nickname }),
   });
 
-  return data;
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.error || "회원가입 실패");
+  }
+
+  return data; // { user_id, email, nickname, role, status }
+}
+
+export async function login(email: string, password: string) {
+  const res = await fetch(`${BASE_URL}/api/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.error || "로그인 실패");
+  }
+
+  return data; // { user_id, email, nickname, role, status }
 }

@@ -4,7 +4,7 @@
 // 실제 ORDS 주소에 맞게 바꿔야 함.
 // - 로컬 PC에서 ORDS 실행 중이고 Android 에뮬레이터로 접근한다면 예: http://10.0.2.2:8080/ords/studyup
 // - 원격 서버라면 예: https://your-server/ords/studyup
-const BASE_URL = "http://172.20.24.235:8181"; // 사용자 PC의 IP 주소로 변경할 것
+const BASE_URL = "http://192.168.0.34:8181"; // 사용자 PC의 IP 주소로 변경할 것
 
 export type ApiRequestOptions = {
   method?: string;
