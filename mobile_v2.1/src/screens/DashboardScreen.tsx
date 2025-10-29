@@ -12,6 +12,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Search, MapPin, Users, Calendar, BookOpen, Heart } from 'lucide-react-native';
 import { STUDY_SUBJECTS } from '../data/subjects';
 import { useNavigation } from '@react-navigation/native';
+import { getRecipes } from '../services/devTestService';
 
 // === 웹과 동일 KOREA_REGIONS (필요 구역만 우선 반영, 전체 복붙도 OK) ===
 export const KOREA_REGIONS: Record<string, string[]> = {
@@ -101,7 +102,31 @@ export default function DashboardScreen() {
     }
   };
 
-  useEffect(()=>{ /* filteredStudies는 useMemo에서 자동 갱신 */ }, [searchQuery, selectedSido, selectedSigungu, selectedSubject]);
+  const [recipes, setRecipes] = useState<any[]>([]);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await getRecipes();
+        setRecipes(r);
+      } catch (e: any) {
+        setErr(e.message);
+      }
+    })();
+  }, []);
+
+  // JSX 어딘가에 출력
+  {err ? (
+    <Text style={{ color: 'red' }}>{err}</Text>
+  ) : (
+    recipes.map((row, idx) => (
+      <Text key={idx} style={{ fontSize: 12, color: theme.color.text }}>
+        {JSON.stringify(row)}
+      </Text>
+    ))
+  )}
+
 
   // Tabs (전체 / 내 스터디 / 찜)
   const [tab, setTab] = useState<'all'|'my'|'favorites'>('all');
@@ -139,6 +164,23 @@ export default function DashboardScreen() {
         <View style={{ marginTop: 12, marginBottom: 12 }}>
           <Text style={{ fontSize:16, marginBottom: 4 }}>안녕하세요! 👋</Text>
           <Text style={{ color: theme.color.mutedText, fontSize: 12 }}>새로운 스터디를 찾아보거나 만들어보세요.</Text>
+        </View>
+
+        {/* 🔎 백엔드 연결 테스트 출력 영역 */}
+        <View style={{ marginBottom: 12, padding: 12, borderWidth:1, borderColor: theme.color.border, borderRadius:8 }}>
+          <Text style={{ fontSize:14, fontWeight:'600', marginBottom:4 }}>DB 연결 테스트 (/api/recipes)</Text>
+          {err ? (
+            <Text style={{ color: theme.color.destructive }}>{err}</Text>
+          ) : (
+            recipes.map((row, idx) => (
+              <Text
+                key={idx}
+                style={{ fontSize: 12, color: theme.color.text }}
+              >
+                {JSON.stringify(row)}
+              </Text>
+            ))
+          )}
         </View>
 
         {/* Search */}
