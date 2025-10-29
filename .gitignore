@@ -6,3 +6,5 @@
 
 /mobile/node_modules
 /mobile/package-lock.json
+
+/backend/node_modules
