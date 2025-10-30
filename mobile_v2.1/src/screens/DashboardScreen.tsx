@@ -13,6 +13,7 @@ import { Search, MapPin, Users, Calendar, BookOpen, Heart } from 'lucide-react-n
 import { STUDY_SUBJECTS } from '../data/subjects';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { fetchStudies } from '../services/studyServices';
+import { useAuth } from '../context/AuthContext';
 
 // === 웹과 동일 KOREA_REGIONS (필요 구역만 우선 반영, 전체 복붙도 OK) ===
 export const KOREA_REGIONS: Record<string, string[]> = {
@@ -71,6 +72,14 @@ export default function DashboardScreen() {
   const [tab, setTab] = useState<'all'|'my'|'favorites'>('all');
 
   const isFocused = useIsFocused();
+  const { user: authUser } = useAuth();
+
+  const currentUser = useMemo(() => {
+    const id = authUser ? String(authUser.user_id) : 'me';
+    const nickname = authUser?.nickname ?? '나';
+    const role = authUser?.role === 'admin' ? 'admin' : 'user';
+    return { id, nickname, role } as const;
+  }, [authUser]);
 
   // 화면에 돌아올 때마다 최신 스터디 목록 불러오기
   useEffect(() => {
@@ -259,6 +268,7 @@ export default function DashboardScreen() {
             <StudyCard
               key={study.id}
               study={study}
+              currentUser={currentUser}
               isFavorite={favoriteIds.includes(study.id)}
               onToggleFavorite={() => {
                 setFavoriteIds(ids =>
@@ -285,7 +295,6 @@ export default function DashboardScreen() {
               study={study}
               showProgress
               isFavorite={favoriteIds.includes(study.id)}
-              defaultIsMember
               onToggleFavorite={() => {
                 setFavoriteIds(ids =>
                   ids.includes(study.id)
@@ -293,6 +302,8 @@ export default function DashboardScreen() {
                     : [...ids, study.id]
                 );
               }}
+              currentUser={currentUser}
+              defaultIsMember
             />
           )) : (
             <View style={S.empty}>
@@ -313,6 +324,7 @@ export default function DashboardScreen() {
                     key={study.id}
                     study={study}
                     isFavorite
+                    currentUser={currentUser}
                     onToggleFavorite={() => {
                       setFavoriteIds(ids => ids.filter(x => x !== study.id));
                     }}
@@ -334,27 +346,36 @@ export default function DashboardScreen() {
   );
 }
 
+type MinimalUser = { id: string; nickname: string; role?: 'user' | 'admin' };
+
+type StudyCardProps = {
+  study: Study;
+  showProgress?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite: () => void;
+  currentUser: MinimalUser;
+  defaultIsMember?: boolean;
+};
+
 function StudyCard({
   study,
   showProgress,
   isFavorite,
   onToggleFavorite,
+  currentUser,
   defaultIsMember = false,
-}: {
-  study: Study;
-  showProgress?: boolean;
-  isFavorite?: boolean;
-  onToggleFavorite: ()=>void;
-  defaultIsMember?: boolean;
-}) {
+}: StudyCardProps) {
   const navigation = useNavigation<any>();
+  const isOwner = String(study.ownerId ?? '') === String(currentUser.id ?? '');
+  const initialIsMember = defaultIsMember || isOwner;
 
   return (
     <Pressable
       onPress={() => navigation.navigate('StudyDetail', {
         study,
-        user: { id: 'me', nickname: '나', role: 'user' }, // 필요 시 실제 유저로 교체
-        isMember: defaultIsMember,
+        user: currentUser,
+        isMember: initialIsMember,
+        isOwner,
       })}
       style={S.studyPressable}
     >

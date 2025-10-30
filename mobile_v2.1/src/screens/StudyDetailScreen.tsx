@@ -46,9 +46,12 @@ export default function StudyDetailScreen({ route, navigation }: any) {
   // 임시: 유저가 없을 경우 가짜 유저
   const user: User = userParam ?? { id: 'me', nickname: '나', role: 'user' };
 
-  const isOwner = study?.ownerId === user.id;
-  const initialIsMemberParam = route?.params?.isMember as boolean | undefined;
-  const initialIsMember = isOwner || Boolean(initialIsMemberParam);
+  const routeIsOwner = route?.params?.isOwner as boolean | undefined;
+  const inferredIsOwner = String(study?.ownerId ?? '') === String(user.id ?? '');
+  const isOwner = routeIsOwner ?? inferredIsOwner;
+
+  const routeIsMember = route?.params?.isMember as boolean | undefined;
+  const initialIsMember = isOwner || Boolean(routeIsMember);
 
   const [isMember, setIsMember] = useState<boolean>(initialIsMember);
   const [joinStatus, setJoinStatus] = useState<'none' | 'pending' | 'approved'>(initialIsMember ? 'approved' : 'none');
@@ -250,7 +253,8 @@ export default function StudyDetailScreen({ route, navigation }: any) {
                 onPress={() =>
                   navigation?.navigate?.('Attendance', {
                     study,
-                    user: { id: 'me', nickname: '나', gender: '남성', role: 'user' },
+                    user,
+                    isOwner,
                   })
                 }
                 style={{ flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}
