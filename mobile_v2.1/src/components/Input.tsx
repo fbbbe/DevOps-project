@@ -36,6 +36,7 @@ export default React.forwardRef<TextInput, InputProps>(function Input(
           multiline && { textAlignVertical: 'top', paddingVertical: 10 },
           style,
         ]}
+        multiline={multiline}
         placeholderTextColor={theme.color.mutedText}
         onFocus={(e) => {
           setFocused(true);

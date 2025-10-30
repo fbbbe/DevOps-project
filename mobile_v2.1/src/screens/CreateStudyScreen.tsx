@@ -671,63 +671,6 @@ export default function CreateStudyScreen({ navigation }: any) {
             </CardContent>
           </Card>
 
-          {/* 스터디장 정보 */}
-          <Card style={{ marginTop: 12 }}>
-            <CardHeader>
-              <CardTitle style={{ fontSize: 16 }}>
-                스터디장 정보
-              </CardTitle>
-              <CardDescription>자동으로 표시됩니다</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 12,
-                  backgroundColor: "#f6f7fa",
-                  borderRadius: 12,
-                  padding: 12,
-                }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: theme.color.primary,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: theme.color.onPrimary,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {user?.nickname
-                      ? user.nickname.slice(0, 1).toUpperCase()
-                      : "U"}
-                  </Text>
-                </View>
-                <View>
-                  <Text style={{ fontWeight: "600" }}>
-                    {user?.nickname ?? "닉네임"}
-                  </Text>
-                  <Text
-                    style={{
-                      color: theme.color.mutedText,
-                      fontSize: 12,
-                    }}
-                  >
-                    {user?.role ?? "역할"}
-                  </Text>
-                </View>
-              </View>
-            </CardContent>
-          </Card>
-
           <View style={{ height: 24 }} />
         </ScrollView>
       </KeyboardAvoidingView>

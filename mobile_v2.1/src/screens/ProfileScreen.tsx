@@ -162,45 +162,48 @@ export default function ProfileScreen({ route, navigation }: any) {
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
           {/* Profile Card */}
           <Card>
-            <CardHeader>
-              <View style={{ flexDirection:'row', alignItems:'center', gap:12 }}>
-                <AvatarFallback name={user.nickname} />
-                <View style={{ flex:1 }}>
-                  {!isEditing ? (
-                    <>
-                      <Text style={{ fontSize:18, fontWeight:'700' }}>{user.nickname}</Text>
-                      {!!user.gender && <Text style={{ color: theme.color.mutedText }}>{user.gender}</Text>}
-                      {!!user.email && <Text style={{ color: theme.color.mutedText, fontSize:12 }}>{user.email}</Text>}
-                    </>
-                  ) : (
-                    <View>
-                      <Text style={S.label}>닉네임</Text>
-                      <Input value={editedNickname} onChangeText={setEditedNickname} placeholder="새 닉네임 입력" />
-                    </View>
-                  )}
-                </View>
+            <CardHeader style={S.profileHeader}>
+              <AvatarFallback name={user.nickname} />
 
-                {!isEditing ? (
-                  <Button variant="outline" size="sm" onPress={() => setIsEditing(true)}><Edit size={14} color={theme.color.text} /></Button>
-                ) : (
-                  <View style={{ flexDirection:'row', gap:6 }}>
-                    <Button variant="outline" size="sm" onPress={handleSaveProfile}><Save size={14} color={theme.color.text} /></Button>
-                    <Button variant="ghost" size="sm" onPress={() => { setIsEditing(false); setEditedNickname(user.nickname); }}>
-                      <X size={14} color={theme.color.text} />
-                    </Button>
-                  </View>
-                )}
-              </View>
+              {!isEditing ? (
+                <View style={S.profileInfo}>
+                  <Text style={S.profileName}>{user.nickname}</Text>
+                  {!!user.email && <Text style={[S.profileMeta, { fontSize:12 }]}>{user.email}</Text>}
+                </View>
+              ) : (
+                <View style={S.profileEdit}>
+                  <Text style={S.label}>닉네임</Text>
+                  <Input value={editedNickname} onChangeText={setEditedNickname} placeholder="새 닉네임 입력" />
+                </View>
+              )}
+
+              {!isEditing ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={() => setIsEditing(true)}
+                  style={S.profileActionButton}
+                >
+                  <Edit size={14} color={theme.color.text} />
+                </Button>
+              ) : (
+                <View style={S.profileActionsRow}>
+                  <Button variant="outline" size="sm" onPress={handleSaveProfile}><Save size={14} color={theme.color.text} /></Button>
+                  <Button variant="ghost" size="sm" onPress={() => { setIsEditing(false); setEditedNickname(user.nickname); }}>
+                    <X size={14} color={theme.color.text} />
+                  </Button>
+                </View>
+              )}
             </CardHeader>
           </Card>
 
           {/* Statistics */}
-          <Card style={{ marginTop: 12 }}>
-            <CardHeader>
-              <CardTitle style={{ fontSize: 16, flexDirection:'row', alignItems:'center' }}>
+          <Card style={{ marginTop: 24 }}>
+            <CardHeader style={S.sectionHeader}>
+              <View style={S.sectionTitleRow}>
                 <TrendingUp size={18} color={theme.color.text} />
-                <Text style={{ marginLeft: 8 }}>활동 통계</Text>
-              </CardTitle>
+                <CardTitle style={S.sectionTitle}>활동 통계</CardTitle>
+              </View>
             </CardHeader>
             <CardContent>
               <View style={S.grid2}>
@@ -224,8 +227,8 @@ export default function ProfileScreen({ route, navigation }: any) {
 
               <View style={S.separator} />
 
-              <View style={{ alignItems:'center' }}>
-                <Text style={{ fontSize: 16, fontWeight:'700', color: theme.color.primary, marginBottom: 6 }}>
+              <View style={{ alignItems:'center', marginTop: 12 }}>
+                <Text style={{ fontSize: 16, fontWeight:'700', color: theme.color.primary, marginBottom: 6, textAlign:'center' }}>
                   평균 진행률: {averageProgressRate}%
                 </Text>
                 <ProgressBar value={averageProgressRate} />
@@ -330,32 +333,40 @@ export default function ProfileScreen({ route, navigation }: any) {
           </View>
 
           {/* 설정 카드 */}
-          <Card style={{ marginTop: 12 }}>
-            <CardHeader>
-              <CardTitle style={{ fontSize: 16, flexDirection:'row', alignItems:'center' }}>
+          <Card style={{ marginTop: 24 }}>
+            <CardHeader style={S.sectionHeader}>
+              <View style={S.sectionTitleRow}>
                 <Shield size={18} color={theme.color.text} />
-                <Text style={{ marginLeft: 8 }}>설정</Text>
-              </CardTitle>
+                <CardTitle style={S.sectionTitle}>설정</CardTitle>
+              </View>
             </CardHeader>
-            <CardContent style={{ gap: 8 }}>
-              <Button variant="outline" onPress={() => setNotifOpen(true)} style={{ justifyContent:'flex-start' }}>
-                <Bell size={16} color={theme.color.text} />
-                <Text style={{ marginLeft: 8 }}>알림 설정</Text>
+            <CardContent style={{ gap: 12 }}>
+              <Button variant="outline" onPress={() => setNotifOpen(true)} style={S.fullCenterButton}>
+                <View style={S.centerRow}>
+                  <Bell size={16} color={theme.color.text} />
+                  <Text style={{ marginLeft: 8, textAlign:'center', color: theme.color.text }}>알림 설정</Text>
+                </View>
               </Button>
-              <Button variant="outline" onPress={() => setPrivacyOpen(true)} style={{ justifyContent:'flex-start' }}>
-                <Shield size={16} color={theme.color.text} />
-                <Text style={{ marginLeft: 8 }}>개인정보 보호</Text>
+              <Button variant="outline" onPress={() => setPrivacyOpen(true)} style={S.fullCenterButton}>
+                <View style={S.centerRow}>
+                  <Shield size={16} color={theme.color.text} />
+                  <Text style={{ marginLeft: 8, textAlign:'center', color: theme.color.text }}>개인정보 보호</Text>
+                </View>
               </Button>
-              <Button variant="outline" onPress={() => setContactOpen(true)} style={{ justifyContent:'flex-start' }}>
-                <MessageCircle size={16} color={theme.color.text} />
-                <Text style={{ marginLeft: 8 }}>문의하기</Text>
+              <Button variant="outline" onPress={() => setContactOpen(true)} style={S.fullCenterButton}>
+                <View style={S.centerRow}>
+                  <MessageCircle size={16} color={theme.color.text} />
+                  <Text style={{ marginLeft: 8, textAlign:'center', color: theme.color.text }}>문의하기</Text>
+                </View>
               </Button>
 
               <View style={S.separator} />
 
-              <Button variant="destructive" onPress={onLogout} style={{ justifyContent:'flex-start' }}>
-                <LogOut size={16} color={theme.color.onDestructive} />
-                <Text style={{ marginLeft: 8, color: theme.color.onDestructive }}>로그아웃</Text>
+              <Button variant="destructive" onPress={onLogout} style={S.fullCenterButton}>
+                <View style={S.centerRow}>
+                  <LogOut size={16} color={theme.color.onDestructive} />
+                  <Text style={{ marginLeft: 8, textAlign:'center', color: theme.color.onDestructive }}>로그아웃</Text>
+                </View>
               </Button>
             </CardContent>
           </Card>
@@ -525,4 +536,16 @@ const S = StyleSheet.create({
   switchOn: { backgroundColor: '#e0ecff', borderColor: theme.color.primary },
   switchOff: { backgroundColor: '#f3f4f7' },
   knob: { position:'absolute', top: 2, left: 2, width: 20, height: 20, borderRadius: 10, backgroundColor:'#fff', elevation: 2 },
+  profileHeader: { alignItems:'center', justifyContent:'center', gap: 16, paddingVertical: 24 },
+  profileInfo: { alignItems:'center', gap: 4 },
+  profileName: { fontSize:18, fontWeight:'700', textAlign:'center' },
+  profileMeta: { color: theme.color.mutedText, textAlign:'center' },
+  profileEdit: { alignSelf:'stretch', width:'100%', gap: 6 },
+  profileActionButton: { alignSelf:'center' },
+  profileActionsRow: { flexDirection:'row', alignItems:'center', justifyContent:'center', gap: 6 },
+  sectionHeader: { alignItems:'center', paddingBottom: 12 },
+  sectionTitleRow: { flexDirection:'row', alignItems:'center', gap: 8 },
+  sectionTitle: { fontSize: 16, fontWeight:'700', color: theme.color.text },
+  fullCenterButton: { justifyContent:'center', paddingHorizontal: 0 },
+  centerRow: { flex: 1, flexDirection:'row', alignItems:'center', justifyContent:'center' },
 });
