@@ -14,13 +14,13 @@ import { getConn, oracledb } from "../db/oracleClient.js";
  * }
  */
 
-// 스터디 생성
+// 스터디 생성 (트랜잭션 및 태그 저장 기능 추가)
 async function createStudyInDB(payload) {
   const {
     name,
-    subject, // 현재 TOPIC_ID 매핑 안 하면 FK 없애거나 null 처리
+    subject,
     description,
-    tags,
+    tags, // ['태그1', '태그2']
     type,
     regionDetail,
     duration,
@@ -36,100 +36,117 @@ async function createStudyInDB(payload) {
     throw new Error("필수 항목 누락");
   }
 
-  // TOPIC_ID는 당장 null로 (FK 미구현 가정)
-  const TOPIC_ID = null;
-
-  // online/offline
-  const IS_ONLINE = type === "online" ? "Y" : "N";
-  const STATUS = "OPEN";
-  const TERM_TYPE = duration ? duration.toUpperCase() : null;
-
-  // 지역 (offline 일 때만)
-  let REGION_CODE = null;
-  let REGION_PATH = null;
-
-  if (IS_ONLINE === "N" && regionDetail) {
-    REGION_CODE = [regionDetail.sido || "", regionDetail.sigungu || ""]
-      .filter(Boolean)
-      .join("-")
-      .toUpperCase()
-      .slice(0, 20); // REGION_CODE VARCHAR2(20)
-
-    REGION_PATH = [
-      regionDetail.sido || "",
-      regionDetail.sigungu || "",
-      regionDetail.dongEupMyeon || "",
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .trim()
-      .slice(0, 200); // REGION_PATH VARCHAR2(200)
-  }
-
-  const startDateBind = startDate && startDate !== "" ? startDate : null;
-  const endDateBind = endDate && endDate !== "" ? endDate : null;
-
-  const connection = await getConn();
-
+  // === [수정] 트랜잭션 시작 ===
+  const connection = await getConn(); 
+  
   try {
-    const result = await connection.execute(
-      `
-      INSERT INTO STUDIES (
-        STUDY_ID,
-        NAME,
-        DESCRIPTION,
-        TOPIC_ID,
-        REGION_CODE,
-        REGION_PATH,
-        IS_ONLINE,
-        TERM_TYPE,
-        START_DATE,
-        END_DATE,
-        STATUS,
-        CREATED_BY,
-        PROGRESS_PCT
-      )
-      VALUES (
-        SEQ_STUDIES.NEXTVAL,
-        :name,
-        :description,
-        :topicId,
-        :regionCode,
-        :regionPath,
-        :isOnline,
-        :termType,
-        CASE WHEN :startDate IS NULL THEN NULL ELSE TO_DATE(:startDate, 'YYYY-MM-DD') END,
-        CASE WHEN :endDate   IS NULL THEN NULL ELSE TO_DATE(:endDate,   'YYYY-MM-DD') END,
-        :status,
-        :createdBy,
-        0
-      )
-      RETURNING STUDY_ID INTO :newStudyId
-      `,
-      {
-        name,
-        description,
-        topicId: TOPIC_ID,
-        regionCode: REGION_CODE,
-        regionPath: REGION_PATH,
-        isOnline: IS_ONLINE,
-        termType: TERM_TYPE,
-        startDate: startDateBind,
-        endDate: endDateBind,
-        status: STATUS,
-        createdBy: createdByUserId,
-        newStudyId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
-      }
-    );
+    // 1. 스터디 본문 저장
+    const TOPIC_ID = null; // 주제는 일단 null 유지
+    const IS_ONLINE = type === "online" ? "Y" : "N";
+    const REGION_CODE = regionDetail?.sido ?? (type === 'online' ? 'ONLINE' : null);
+    const REGION_PATH =
+      type === "online"
+        ? "온라인"
+        : [regionDetail?.sido, regionDetail?.sigungu, regionDetail?.dongEupMyeon]
+            .filter(Boolean)
+            .join(" ");
 
+    const studyBind = {
+      name,
+      description,
+      TOPIC_ID,
+      REGION_CODE,
+      REGION_PATH,
+      IS_ONLINE,
+      TERM_TYPE: duration.toUpperCase(),
+      START_DATE: { val: TO_DATE(startDate), type: oracledb.DATE },
+      END_DATE: { val: TO_DATE(endDate), type: oracledb.DATE },
+      STATUS: "OPEN", // 스터디 생성 시 기본 상태 'OPEN'
+      CREATED_BY: createdByUserId,
+      PROGRESS_PCT: 0,
+      newStudyId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+    };
+
+    const studySql = `
+      INSERT INTO STUDIES (
+        STUDY_ID, NAME, DESCRIPTION, TOPIC_ID, REGION_CODE, REGION_PATH,
+        IS_ONLINE, TERM_TYPE, START_DATE, END_DATE, STATUS, CREATED_BY, PROGRESS_PCT
+      ) VALUES (
+        SEQ_STUDIES.NEXTVAL, :name, :description, :TOPIC_ID, :REGION_CODE, :REGION_PATH,
+        :IS_ONLINE, :TERM_TYPE, :START_DATE, :END_DATE, :STATUS, :CREATED_BY, :PROGRESS_PCT
+      ) RETURNING STUDY_ID INTO :newStudyId
+    `;
+
+    const studyResult = await connection.execute(studySql, studyBind);
+    const newStudyId = studyResult.outBinds.newStudyId[0];
+
+    // --- [신규] 2. 태그 저장 로직 ---
+    if (tags && tags.length > 0) {
+      for (const tagName of tags) {
+        if (!tagName || tagName.trim() === "") continue;
+
+        let tagId;
+
+        // 2a. 기존 태그 검색
+        const findTagSql = `SELECT TAG_ID FROM TAGS WHERE NAME_KO = :tagName`;
+        const findTagRes = await connection.execute(findTagSql, { tagName });
+
+        if (findTagRes.rows.length > 0) {
+          tagId = findTagRes.rows[0].TAG_ID;
+        } else {
+          // 2b. 신규 태그 생성 (SEQ_TAGS 시퀀스 사용)
+          const createTagSql = `
+            INSERT INTO TAGS (TAG_ID, NAME_KO) 
+            VALUES (SEQ_TAGS.NEXTVAL, :tagName)
+            RETURNING TAG_ID INTO :newTagId
+          `;
+          const createTagRes = await connection.execute(createTagSql, {
+            tagName,
+            newTagId: { dir: oracledb.BIND_OUT, type: oracledb.NUMBER },
+          });
+          tagId = createTagRes.outBinds.newTagId[0];
+        }
+
+        // 2c. 스터디와 태그 연결 (STUDY_TAGS)
+        const linkTagSql = `
+          INSERT INTO STUDY_TAGS (STUDY_ID, TAG_ID) 
+          VALUES (:newStudyId, :tagId)
+        `;
+        await connection.execute(linkTagSql, { newStudyId, tagId });
+      }
+    }
+    
+    // --- [수정] 3. 모든 작업 성공 시 Commit ---
     await connection.commit();
 
-    const newStudyId = result.outBinds.newStudyId[0];
+    // 프론트로 생성된 스터디 ID 반환
+    return {
+      STUDY_ID: newStudyId,
+      NAME: name,
+      STATUS: "OPEN",
+    };
 
-    // TODO: tags 배열 -> STUDY_TAGS insert 로직(후순위)
-    return { study_id: newStudyId, status: "OK" };
+  } catch (err) {
+    // --- [수정] 4. 하나라도 실패 시 Rollback ---
+    await connection.rollback();
+    console.error("CreateStudyInDB Error:", err);
+    throw new Error("스터디 생성 중 오류가 발생했습니다: " + err.message);
   } finally {
-    try { await connection.close(); } catch {}
+    // --- [수정] 5. 연결 종료 ---
+    try {
+      await connection.close();
+    } catch (e) {}
+  }
+}
+
+// YYYY-MM-DD 문자열을 Date 객체로 (null/undefined 안전)
+function TO_DATE(str) {
+  if (!str) return null;
+  try {
+    const dt = new Date(str);
+    return isNaN(dt.getTime()) ? null : dt;
+  } catch (e) {
+    return null;
   }
 }
 

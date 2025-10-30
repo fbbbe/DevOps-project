@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 
 import authRoutes from "./routes/authRoutes.js";
 import studyRoutes from "./routes/studyRoutes.js";
+import { attachUserFromToken } from "./middleware/authMiddleware.js";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // 실제 API
+app.use("/api", attachUserFromToken);
 app.use("/api", authRoutes);   // /api/signup, /api/login
 app.use("/api", studyRoutes);  // /api/studies
 

@@ -227,7 +227,7 @@ export async function createStudy(payload: {
 }) {
   // 서버: { study_id, status: "OK" } 형태 가정
   const data = await api.request<{ study_id: number; status: string }>(
-    "/studies",
+    "/api/studies",
     { method: "POST", body: payload }
   );
   return data;
@@ -235,13 +235,13 @@ export async function createStudy(payload: {
 
 // 스터디 목록
 export async function fetchStudies(): Promise<Study[]> {
-  const rawList = await api.request<any[]>("/studies", { method: "GET" });
+  const rawList = await api.request<any[]>("/api/studies", { method: "GET" });
   if (!Array.isArray(rawList)) return [];
   return rawList.map(mapRowToStudy);
 }
 
 // 상세(옵션)
 export async function getStudyDetail(studyId: string) {
-  const data = await api.request<any>(`/studies/${studyId}`, { method: "GET" });
+  const data = await api.request<any>(`/api/studies/${studyId}`, { method: "GET" });
   return mapRowToStudy(data);
 }
