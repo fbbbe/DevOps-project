@@ -1,3 +1,4 @@
+// mobile_v2.1/src/components/Badge.tsx
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import theme from '../styles/theme';
