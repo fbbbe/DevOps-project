@@ -1,39 +1,95 @@
+// src/services/studyServices.ts
+// - 목록/상세 조회 시 서버 row를 화면에서 쓰기 쉬운 형태로 "일관" 정규화
+// - 태그: 무엇이 오든 string[]
+// - 날짜: 무엇이 오든 'YYYY-MM-DD' 문자열
+
 import api from "./api";
 
-// 문자열 안전 변환
-const s = (v: any, def = "") => {
-  if (v === null || v === undefined) return def;
-  try { return String(v); } catch { return def; }
-};
+export interface RegionDetail {
+  sido: string;
+  sigungu: string;
+  dongEupMyeon?: string;
+}
 
-// 객체에서 "태그로 쓸 수 있는 문자열"을 최대한 뽑아내기
-function pickStringFromObject(o: any): string | null {
-  if (!o || typeof o !== "object") return null;
+export interface Study {
+  id: string;
+  name: string;
+  subject: string;
+  description: string;
+  tags: string[];
+  type: "online" | "offline";
+  regionDetail?: RegionDetail;
+  region?: string;        // 단순 표기용
+  duration: "short" | "long";
+  weekDuration?: string;
+  dayDuration?: string;
+  startDate: string;      // YYYY-MM-DD
+  endDate?: string | null;// YYYY-MM-DD
+  maxMembers: number;
+  currentMembers: number;
+  ownerId: number | string;
+  ownerNickname: string;
+  status: "recruiting" | "active" | "completed";
+  progress: number;
+}
 
-  // 1) 흔한 키 우선
-  const common = o.name ?? o.label ?? o.title ?? o.value ?? o.tag ?? o.text ?? o.key ?? o.code;
-  if (typeof common === "string") return common;
+/* ---------- helpers ---------- */
 
-  // 2) 값들 중 문자열 하나 선택 (우선순위: 짧은 문자열)
-  const stringVals = Object.values(o).filter((v) => typeof v === "string") as string[];
-  if (stringVals.length) {
-    // 너무 긴 건 잘라서 사용
-    const chosen = stringVals.sort((a, b) => a.length - b.length)[0];
-    return chosen.length > 200 ? chosen.slice(0, 200) : chosen;
+// 안전 문자열화
+function s(v: any): string {
+  if (v == null) return "";
+  if (v instanceof Date) return toYmd(v);
+  // ISO 문자열이면 앞 10자리(YYYY-MM-DD) 우선
+  if (typeof v === "string") {
+    const txt = v.trim();
+    const iso = txt.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (iso) return iso[1];
+    // 기타 문자열은 그대로
+    return txt;
   }
+  return String(v);
+}
 
-  // 3) key:true 형태 → key들을 태그로
-  const truthyKeys = Object.entries(o)
-    .filter(([, v]) => v === true || v === 1 || v === "1")
-    .map(([k]) => k);
-  if (truthyKeys.length) return truthyKeys.join(",");
-
-  // 4) 마지막 보루: key:value 쌍을 짧게 직렬화
+// 날짜를 'YYYY-MM-DD' 로
+function toYmd(input: any): string {
   try {
-    const flat = Object.entries(o)
+    if (!input) return "";
+    if (input instanceof Date && !isNaN(input.getTime())) {
+      const y = input.getFullYear();
+      const m = String(input.getMonth() + 1).padStart(2, "0");
+      const d = String(input.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+    if (typeof input === "string") {
+      // 이미 YYYY-MM-DD... 인 경우
+      const iso = input.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (iso) return iso[1];
+      // 기타 문자열은 Date 파싱 시도
+      const dt = new Date(input);
+      if (!isNaN(dt.getTime())) return toYmd(dt);
+      return "";
+    }
+    // 숫자 타임스탬프 등
+    const dt = new Date(input);
+    return isNaN(dt.getTime()) ? "" : toYmd(dt);
+  } catch {
+    return "";
+  }
+}
+
+// 객체 안에서 대표 문자열 하나 추출 (태그 정규화 보조)
+function pickStringFromObject(obj: any): string | null {
+  try {
+    if (!obj || typeof obj !== "object") return null;
+    for (const k of ["name", "label", "value", "text", "tag"]) {
+      const v = obj[k];
+      if (typeof v === "string" && v.trim()) return v.trim();
+    }
+    // 못 찾으면 압축 요약
+    const flat = Object.entries(obj)
       .map(([k, v]) => `${k}:${typeof v === "string" ? v : JSON.stringify(v)}`)
       .join(",");
-    return flat.length > 200 ? flat.slice(0, 200) : flat;
+    return flat.length > 200 ? flat.slice(0, 200) : flat || null;
   } catch {
     return null;
   }
@@ -43,7 +99,6 @@ function pickStringFromObject(o: any): string | null {
 function normalizeTags(input: any): string[] {
   if (input == null) return [];
 
-  // 배열
   if (Array.isArray(input)) {
     return input
       .flatMap((t) => {
@@ -58,53 +113,57 @@ function normalizeTags(input: any): string[] {
       .filter(Boolean);
   }
 
-  // 문자열: JSON or 구분자 리스트 대응
   if (typeof input === "string") {
     const txt = input.trim();
     if (!txt) return [];
     // JSON 문자열이면 파싱 후 재귀
-    if ((txt.startsWith("[") && txt.endsWith("]")) || (txt.startsWith("{") && txt.endsWith("}"))) {
+    if (
+      (txt.startsWith("[") && txt.endsWith("]")) ||
+      (txt.startsWith("{") && txt.endsWith("}"))
+    ) {
       try {
         const parsed = JSON.parse(txt);
         return normalizeTags(parsed);
       } catch {
-        // 실패하면 아래 구분자 split
+        // 실패하면 아래 split
       }
     }
-    // 콤마/파이프/공백 구분자
+    // 콤마/파이프 구분자 대응
     return txt.split(/[,\|]/).map((x) => x.trim()).filter(Boolean);
   }
 
-  // URLSearchParams → 값들만
+  // URLSearchParams 등
   if (typeof URLSearchParams !== "undefined" && input instanceof URLSearchParams) {
     return Array.from(input.values()).map((v) => v.trim()).filter(Boolean);
   }
 
-  // 객체 → 문자열 후보 추출
   if (typeof input === "object") {
     const picked = pickStringFromObject(input);
     return picked ? [picked] : [JSON.stringify(input)];
   }
 
-  // 숫자/불리언 등
   return [String(input)];
 }
 
 // 서버 row -> 화면 Study
-function mapRowToStudy(row: any) {
+function mapRowToStudy(row: any): Study {
+  // 온라인 여부
   const isOnline =
     s(row.IS_ONLINE).toUpperCase() === "Y" ||
     s(row.IS_ONLINE).toLowerCase() === "online";
 
-  const duration = s(row.TERM_TYPE).toLowerCase() === "long" ? "long" : "short";
+  // 기간
+  const duration: "short" | "long" =
+    s(row.TERM_TYPE).toLowerCase() === "long" ? "long" : "short";
 
+  // 상태 매핑
   let mappedStatus: "recruiting" | "active" | "completed" = "recruiting";
   const rawStatus = s(row.STATUS).toLowerCase();
   if (rawStatus === "open") mappedStatus = "recruiting";
   else if (rawStatus === "active") mappedStatus = "active";
   else if (["closed", "expired", "done"].includes(rawStatus)) mappedStatus = "completed";
 
-  // 서버에서 넘어올 수 있는 여러 후보 컬럼명을 순서대로 시도
+  // 태그: DB가 문자열/JSON/배열 아무거나 보낼 수 있음
   const tags = normalizeTags(
     row.tags ??
     row.TAGS ??
@@ -114,36 +173,75 @@ function mapRowToStudy(row: any) {
     row.TAGS_JSON
   );
 
-  return {
-    id: s(row.STUDY_ID),
-    name: s(row.NAME),
-    subject: row.TOPIC_ID ? s(row.TOPIC_ID) : "기타",
-    description: s(row.DESCRIPTION),
-    tags, // ← 항상 string[]
+  // 주제명: 없으면 '기타'
+  const subject = s(row.SUBJECT_NAME || row.SUBJECT || row.TOPIC || row.TOPIC_ID) || "기타";
 
+  // 날짜 정규화 (무조건 YYYY-MM-DD)
+  const startDate = toYmd(row.START_DATE || row.start_date || row.startDate);
+  const endDate   = toYmd(row.END_DATE   || row.end_date   || row.endDate) || null;
+
+  return {
+    id: s(row.STUDY_ID || row.study_id || row.id),
+    name: s(row.NAME || row.name) || "이름 없음",
+    subject,
+    description: s(row.DESCRIPTION || row.description),
+
+    tags,                            // ← 항상 string[]
     type: isOnline ? "online" : "offline",
     duration,
 
     region: s(row.REGION_PATH) || s(row.REGION_CODE),
-    regionDetail: undefined,
+    regionDetail: undefined,         // 서버에서 세부 행정구역 분해를 안 주므로 우선 보류
 
-    startDate: row.START_DATE ? s(row.START_DATE).slice(0, 10) : "",
-    endDate: row.END_DATE ? s(row.END_DATE).slice(0, 10) : undefined,
+    startDate,                       // ← 항상 'YYYY-MM-DD'
+    endDate,                         // ← null 또는 'YYYY-MM-DD'
 
-    maxMembers: Number(row.MAX_MEMBERS ?? 10),
-    currentMembers: Number(row.CURRENT_MEMBERS ?? 1),
+    maxMembers: Number(row.MAX_MEMBERS ?? row.max_members ?? 10),
+    currentMembers: Number(row.CURRENT_MEMBERS ?? row.current_members ?? 1),
 
-    ownerId: s(row.CREATED_BY),
-    ownerNickname: "호스트",
+    ownerId: row.CREATED_BY ?? row.created_by ?? "",
+    ownerNickname: s(row.OWNER_NICKNAME ?? row.created_by_nick) || "호스트",
 
     status: mappedStatus,
-    progress: Number(row.PROGRESS_PCT ?? 0),
+    progress: Number(row.PROGRESS_PCT ?? row.progress ?? 0),
   };
 }
 
-// 목록 API
-export async function fetchStudies() {
-  const rawList = await api.get<any[]>("/studies");
+/* ---------- API ---------- */
+
+// 스터디 생성
+export async function createStudy(payload: {
+  name: string;
+  description: string;
+  tags: string[];
+  type: "online" | "offline";
+  subject: string;
+  regionDetail?: RegionDetail;
+  duration: "short" | "long";
+  weekDuration?: string;
+  dayDuration?: string;
+  maxMembers: number;
+  startDate: string;      // YYYY-MM-DD
+  endDate?: string;       // YYYY-MM-DD
+  createdByUserId: number;
+}) {
+  // 서버: { study_id, status: "OK" } 형태 가정
+  const data = await api.request<{ study_id: number; status: string }>(
+    "/studies",
+    { method: "POST", body: payload }
+  );
+  return data;
+}
+
+// 스터디 목록
+export async function fetchStudies(): Promise<Study[]> {
+  const rawList = await api.request<any[]>("/studies", { method: "GET" });
   if (!Array.isArray(rawList)) return [];
   return rawList.map(mapRowToStudy);
+}
+
+// 상세(옵션)
+export async function getStudyDetail(studyId: string) {
+  const data = await api.request<any>(`/studies/${studyId}`, { method: "GET" });
+  return mapRowToStudy(data);
 }
