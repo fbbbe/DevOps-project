@@ -53,21 +53,31 @@ async function normalizeValue(v) {
   return v;
 }
 
-/** 한 행(객체) 정규화 */
+/** 한 행(객체) 정규화 (DATE 버그 수정) */
 async function normalizeRow(row) {
   const out = {};
   const entries = Object.entries(row ?? {});
   for (const [k, v] of entries) {
-    if (Array.isArray(v)) {
+    
+    // [수정] Date 타입을 먼저 확인하도록 순서 변경
+    if (v instanceof Date) {
+      out[k] = await normalizeValue(v);
+    } 
+    // [기존]
+    else if (Array.isArray(v)) {
       out[k] = await Promise.all(v.map((x) => normalizeValue(x)));
-    } else if (v && typeof v === 'object' && !isLikelyLob(v) && !Array.isArray(v)) {
-      // 중첩 객체도 한 단계만 순회 (필요시 깊게 처리)
+    } 
+    // [기존]
+    else if (v && typeof v === 'object' && !isLikelyLob(v) && !Array.isArray(v)) {
+      // Date가 위에서 걸러졌으므로, 여기는 이제 순수 중첩 객체만 들어옵니다.
       const inner = {};
       for (const [ik, iv] of Object.entries(v)) {
         inner[ik] = await normalizeValue(iv);
       }
       out[k] = inner;
-    } else {
+    } 
+    // [기존]
+    else {
       out[k] = await normalizeValue(v);
     }
   }

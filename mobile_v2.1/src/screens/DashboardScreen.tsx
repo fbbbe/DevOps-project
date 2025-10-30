@@ -338,7 +338,7 @@ function StudyCard({
   showProgress,
   isFavorite,
   onToggleFavorite
-}:{
+}: {
   study: Study;
   showProgress?: boolean;
   isFavorite?: boolean;
