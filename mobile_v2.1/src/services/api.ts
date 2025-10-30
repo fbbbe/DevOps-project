@@ -1,6 +1,7 @@
 // src/services/api.ts
-const BASE_URL = "http://192.168.0.34:8181";
-
+//로컬 컴퓨터
+//const BASE_URL = "http://192.168.0.34:8181";
+const BASE_URL = "http://192.168.0.104:8181";
 export type ApiRequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   token?: string;

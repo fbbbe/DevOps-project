@@ -10,7 +10,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import theme from '../styles/theme';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Search, MapPin, Users, Calendar, BookOpen, Heart } from 'lucide-react-native';
-import { STUDY_SUBJECTS } from '../data/subjects';
+//import { STUDY_SUBJECTS } from '../data/subjects';
+import { fetchTopicOptions } from '../services/topicService';//topics추가
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { fetchStudies } from '../services/studyServices';
 
@@ -69,7 +70,10 @@ export default function DashboardScreen() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [availableSigungu, setAvailableSigungu] = useState<string[]>([]);
   const [tab, setTab] = useState<'all'|'my'|'favorites'>('all');
-
+  // topics추가
+  const [subjectOptions, setSubjectOptions] = useState<Option[]>([
+    { label: '전체 주제', value: 'all' },
+  ]);
   const isFocused = useIsFocused();
 
   // 화면에 돌아올 때마다 최신 스터디 목록 불러오기
@@ -82,6 +86,15 @@ export default function DashboardScreen() {
         const list = await fetchStudies();
         // fetchStudies()가 백엔드 데이터를 우리 Study 형태로 매핑해준다고 가정
         setStudies(list as Study[]);
+        //----topics변경 코드----
+         try {
+          const opts = await fetchTopicOptions();
+          setSubjectOptions([{ label: '전체 주제', value: 'all' }, ...opts]);
+        } catch (e) {
+          console.log('주제 옵션 로드 실패:', e);
+          setSubjectOptions([{ label: '전체 주제', value: 'all' }]);
+        }
+        //-----------------------
       } catch (err) {
         console.log('스터디 목록 불러오기 실패:', err);
       } finally {
@@ -157,11 +170,11 @@ export default function DashboardScreen() {
     { label:'전체 시/군/구', value:'all' },
     ...availableSigungu.map(g=>({ label:g, value:g }))
   ];
-
-  const subjectOptions: Option[] = [
-    { label:'전체 주제', value:'all' },
-    ...STUDY_SUBJECTS.map(s=>({ label:s.label, value:s.value }))
-  ];
+  // 삭제 부분
+  // const subjectOptions: Option[] = [
+  //   { label:'전체 주제', value:'all' },
+  //   ...STUDY_SUBJECTS.map(s=>({ label:s.label, value:s.value }))
+  // ];
 
   return (
     <Screen>
