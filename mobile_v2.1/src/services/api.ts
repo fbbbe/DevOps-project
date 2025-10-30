@@ -1,6 +1,8 @@
 // src/services/api.ts
+
 import AsyncStorage from '@react-native-async-storage/async-storage'; // 1. AsyncStorage 임포트
 const BASE_URL = "http://192.168.0.34:8181";
+
 
 export type ApiRequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
