@@ -20,16 +20,12 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import {
-  MembershipStatus,
-  cancelStudyJoinRequest,
-  decideJoinRequest,
-  fetchJoinRequests,
-  fetchMembershipStatus,
-  fetchStudyMembers,
-  requestStudyJoin,
-  StudyMember,
-  StudyJoinRequest,
-} from '../services/studyServices';
+  addJoinRequest as addStoredJoinRequest,
+  cancelJoinRequest as cancelStoredJoinRequest,
+  loadJoinRequests as loadStoredJoinRequests,
+  updateJoinRequestStatus as updateStoredJoinRequestStatus,
+  StoredJoinRequest,
+} from '../services/joinRequestStore';
 
 // ---- 웹 타입과 맞춘 기본 타입 (필요시 공용 타입으로 분리해도 OK)
 export type Study = {
@@ -53,6 +49,21 @@ export type Study = {
 };
 export type User = { id: string; nickname: string; role?: 'user' | 'admin' };
 
+type StudyMember = {
+  userId: string;
+  nickname: string;
+  role: 'owner' | 'member';
+  attendanceRate?: number;
+  warnings: number;
+  userStatus?: string;
+  email?: string;
+  gender?: string;
+  joinedAt?: string;
+  memberId?: string;
+};
+
+type StudyJoinRequest = StoredJoinRequest;
+
 type RouteParams = { study: Study; user?: User };
 export default function StudyDetailScreen({ route, navigation }: any) {
   const { study, user: userParam } = (route?.params ?? {}) as RouteParams;
@@ -61,6 +72,15 @@ export default function StudyDetailScreen({ route, navigation }: any) {
   const { user: authUser } = useAuth();
   const authToken = authUser?.token;
   const authUserId = authUser?.user_id ?? (authUser as any)?.id ?? null;
+  useEffect(() => {
+    if (__DEV__) {
+      console.log(
+        "[StudyDetail] auth state",
+        authUserId,
+        authToken ? authToken.slice(0, 12) + "..." : "(no token)"
+      );
+    }
+  }, [authUserId, authToken]);
 
   const routeIsOwner = route?.params?.isOwner as boolean | undefined;
   const inferredIsOwner = (() => {
@@ -164,95 +184,80 @@ export default function StudyDetailScreen({ route, navigation }: any) {
     [joinRequests]
   );
 
-  const syncMembershipFlags = useCallback(
-    (status: MembershipStatus, requestId?: string | null) => {
-      setJoinRequestId(requestId ?? null);
-
-      if (status === 'owner' || status === 'member' || status === 'approved') {
-        setIsMember(true);
-        setJoinStatus('approved');
-        return;
-      }
-      if (status === 'pending') {
-        setIsMember(false);
-        setJoinStatus('pending');
-        return;
-      }
-      setIsMember(false);
-      setJoinStatus('none');
-    },
-    []
-  );
-
-  const refreshMembership = useCallback(async () => {
-    if (!study?.id) return;
-    try {
-      const res = await fetchMembershipStatus(study.id, authToken ?? undefined);
-      syncMembershipFlags(res.status, res.requestId);
-    } catch (err) {
-      console.warn('[StudyDetail] fetch membership failed', err);
-    }
-  }, [study?.id, authToken, syncMembershipFlags]);
-
-  const refreshJoinRequests = useCallback(async () => {
-    if (!isOwner || !study?.id) {
-      setJoinRequests([]);
-      setRequestsLoading(false);
-      setRequestsError(null);
-      return;
-    }
+  const loadJoinRequests = useCallback(async () => {
     setRequestsLoading(true);
     setRequestsError(null);
     try {
-      const list = await fetchJoinRequests(study.id, authToken ?? undefined);
+      const list = await loadStoredJoinRequests(study.id);
       setJoinRequests(list);
     } catch (err) {
-      console.warn('[StudyDetail] fetch join requests failed', err);
+      console.warn('[StudyDetail] loadJoinRequests failed', err);
       setRequestsError('참여 요청을 불러오지 못했습니다.');
     } finally {
       setRequestsLoading(false);
     }
-  }, [isOwner, study?.id, authToken]);
+  }, [study.id]);
+
+  const refreshJoinRequests = useCallback(() => {
+    loadJoinRequests();
+  }, [loadJoinRequests]);
 
   useEffect(() => {
-    refreshMembership();
-  }, [refreshMembership]);
-
-  useEffect(() => {
-    let mounted = true;
-    setMembersLoading(true);
-    setMembersError(null);
-
-    fetchStudyMembers(study.id, authToken ?? undefined)
-      .then((list) => {
-        if (!mounted) return;
-        const merged = buildMembersList(list);
-        setMembers(merged);
-      })
-      .catch((err) => {
-        console.warn('[StudyDetail] fetch members failed', err);
-        if (!mounted) return;
-        setMembersError('멤버 정보를 불러오지 못했습니다.');
-        setMembers(buildMembersList([]));
-      })
-      .finally(() => {
-        if (mounted) {
-          setMembersLoading(false);
-        }
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [study.id, authToken, buildMembersList]);
+    loadJoinRequests();
+  }, [loadJoinRequests]);
 
   useEffect(() => {
     if (isOwner) {
-      refreshJoinRequests();
-    } else {
-      setJoinRequests([]);
+      setIsMember(true);
+      setJoinStatus('approved');
+      setJoinRequestId(null);
+      return;
     }
-  }, [isOwner, refreshJoinRequests]);
+    if (!selfUserId) return;
+    const mine = joinRequests.find((req) => req.userId === selfUserId);
+    if (!mine) {
+      setJoinRequestId(null);
+      if (initialIsMember) {
+        setIsMember(true);
+        setJoinStatus('approved');
+      } else {
+        setIsMember(false);
+        setJoinStatus('none');
+      }
+      return;
+    }
+    setJoinRequestId(mine.requestId);
+    if (mine.status === 'approved') {
+      setIsMember(true);
+      setJoinStatus('approved');
+    } else if (mine.status === 'pending') {
+      setIsMember(false);
+      setJoinStatus('pending');
+    } else {
+      setIsMember(false);
+      setJoinStatus('none');
+    }
+  }, [joinRequests, isOwner, selfUserId, initialIsMember]);
+
+  useEffect(() => {
+    const approvedMembers: StudyMember[] = joinRequests
+      .filter((req) => req.status === 'approved')
+      .map((req) => ({
+        userId: req.userId,
+        nickname: req.nickname,
+        role: 'member',
+        attendanceRate: undefined,
+        warnings: 0,
+        userStatus: 'member',
+        email: undefined,
+        gender: undefined,
+        joinedAt: req.requestedAt,
+        memberId: req.requestId,
+      }));
+    setMembers(buildMembersList(approvedMembers));
+    setMembersError(null);
+    setMembersLoading(false);
+  }, [joinRequests, buildMembersList]);
 
   if (!study) {
     return (
@@ -302,44 +307,29 @@ export default function StudyDetailScreen({ route, navigation }: any) {
 
   const handleJoinRequest = async () => {
     if (joinRequestLoading) return;
+    if (!selfUserId) {
+      Alert.alert('안내', '로그인 후 참여 신청을 할 수 있습니다.');
+      return;
+    }
 
     setJoinRequestLoading(true);
     try {
-      const res = await requestStudyJoin(study.id, { token: authToken ?? undefined });
-      const normalizedStatus = res.status;
-
-      if (normalizedStatus === 'already_member') {
-        await refreshMembership();
-        try {
-          const latest = await fetchStudyMembers(study.id, authToken ?? undefined);
-          setMembers(buildMembersList(latest));
-        } catch (innerErr) {
-          console.warn('[StudyDetail] refresh members after already_member failed', innerErr);
+      const request = await addStoredJoinRequest({
+        studyId: study.id,
+        userId: selfUserId,
+        nickname: user.nickname || '나',
+      });
+      setJoinRequests((prev) => {
+        const exists = prev.find((item) => item.requestId === request.requestId);
+        if (exists) {
+          return prev.map((item) => (item.requestId === request.requestId ? request : item));
         }
-        return;
-      }
-
-      if (normalizedStatus === 'approved') {
-        syncMembershipFlags('approved', res.requestId);
-        try {
-          const latest = await fetchStudyMembers(study.id, authToken ?? undefined);
-          setMembers(buildMembersList(latest));
-        } catch (innerErr) {
-          console.warn('[StudyDetail] refresh members after approval failed', innerErr);
-          setMembers((prev) => buildMembersList(prev, true));
-        }
-        return;
-      }
-
-      if (normalizedStatus === 'pending') {
-        syncMembershipFlags('pending', res.requestId);
-        return;
-      }
-
-      if (normalizedStatus === 'rejected') {
-        syncMembershipFlags('rejected', res.requestId);
-        Alert.alert('참여 신청이 거절되었습니다.', '다시 신청하려면 잠시 후 시도해주세요.');
-        return;
+        return [...prev, request];
+      });
+      setJoinRequestId(request.requestId);
+      setJoinStatus(request.status === 'approved' ? 'approved' : 'pending');
+      if (request.status === 'approved') {
+        setIsMember(true);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : '참여 신청 처리 중 오류가 발생했습니다.';
@@ -351,7 +341,7 @@ export default function StudyDetailScreen({ route, navigation }: any) {
 
   const handleCancelJoinRequest = () => {
     if (joinRequestLoading) return;
-    if (!joinRequestId) {
+    if (!joinRequestId || !selfUserId) {
       Alert.alert('취소할 요청을 찾을 수 없습니다.');
       return;
     }
@@ -363,9 +353,14 @@ export default function StudyDetailScreen({ route, navigation }: any) {
         style: 'destructive',
         onPress: () => {
           setJoinRequestLoading(true);
-          cancelStudyJoinRequest(study.id, authToken ?? undefined)
+          cancelStoredJoinRequest({ studyId: study.id, userId: selfUserId })
             .then(() => {
-              syncMembershipFlags('none', null);
+              setJoinRequests((prev) =>
+                prev.filter((req) => !(req.userId === selfUserId && req.status === 'pending'))
+              );
+              setJoinStatus('none');
+              setJoinRequestId(null);
+              setIsMember(isOwner);
             })
             .catch((err) => {
               const message = err instanceof Error ? err.message : '참여 요청 취소 중 오류가 발생했습니다.';
@@ -383,15 +378,15 @@ export default function StudyDetailScreen({ route, navigation }: any) {
     if (processingRequestId) return;
     setProcessingRequestId(request.requestId);
     try {
-      await decideJoinRequest(request.requestId, decision, authToken ?? undefined);
-      await refreshJoinRequests();
-      if (decision === 'approve') {
-        try {
-          const latest = await fetchStudyMembers(study.id, authToken ?? undefined);
-          setMembers(buildMembersList(latest));
-        } catch (memberErr) {
-          console.warn('[StudyDetail] refresh members after approval failed', memberErr);
-        }
+      const updated = await updateStoredJoinRequestStatus({
+        studyId: study.id,
+        requestId: request.requestId,
+        status: decision === 'approve' ? 'approved' : 'rejected',
+      });
+      if (updated) {
+        setJoinRequests((prev) =>
+          prev.map((item) => (item.requestId === updated.requestId ? updated : item))
+        );
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : '요청 처리 중 오류가 발생했습니다.';
@@ -405,8 +400,22 @@ export default function StudyDetailScreen({ route, navigation }: any) {
     Alert.alert('스터디 나가기', '정말로 이 스터디를 나가시겠습니까?', [
       { text: '취소', style: 'cancel' },
       { text: '나가기', style: 'destructive', onPress: () => {
-          setIsMember(false); setJoinStatus('none');
-          setMembers(prev => buildMembersList(prev.filter(member => member.userId !== selfUserId), false));
+          const mine = joinRequests.find((req) => req.userId === selfUserId);
+          if (mine) {
+            updateStoredJoinRequestStatus({
+              studyId: study.id,
+              requestId: mine.requestId,
+              status: 'cancelled',
+            }).then((updated) => {
+              if (updated) {
+                setJoinRequests((prev) =>
+                  prev.map((req) => (req.requestId === updated.requestId ? updated : req))
+                );
+              }
+            });
+          }
+          setIsMember(false);
+          setJoinStatus('none');
         }
       }
     ]);

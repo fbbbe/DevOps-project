@@ -10,7 +10,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import theme from '../styles/theme';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Search, MapPin, Users, Calendar, BookOpen, Heart } from 'lucide-react-native';
-//import { STUDY_SUBJECTS } from '../data/subjects';
+import { STUDY_SUBJECTS } from '../data/subjects';
 import { fetchTopicOptions } from '../services/topicService';//topics추가
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { fetchStudies } from '../services/studyServices';
@@ -100,8 +100,8 @@ export default function DashboardScreen() {
           const opts = await fetchTopicOptions();
           setSubjectOptions([{ label: '전체 주제', value: 'all' }, ...opts]);
         } catch (e) {
-          console.log('주제 옵션 로드 실패:', e);
-          setSubjectOptions([{ label: '전체 주제', value: 'all' }]);
+          //console.log('주제 옵션 로드 실패:', e);
+          setSubjectOptions([{ label: '전체 주제', value: 'all' },]);
         }
         //-----------------------
       } catch (err) {
