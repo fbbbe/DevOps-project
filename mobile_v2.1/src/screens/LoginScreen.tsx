@@ -22,10 +22,31 @@ import Input from "../components/Input";
 import theme from "../styles/theme";
 import { BookOpen, Users } from "lucide-react-native";
 import { signUp, login } from "../services/authService";
-import { useAuth } from "../context/AuthContext"; // ✅ 추가
+import { useAuth } from "../context/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export default function LoginScreen({ route, navigation }: any) {
-  const { setUser } = useAuth(); // ✅ 로그인 성공 시 전역 저장
+type LegacyLoginPayload = {
+  id: number;
+  nickname: string;
+  email: string;
+  role: "admin" | "user";
+};
+
+type LegacyLoginHandler = (user: LegacyLoginPayload) => void;
+
+type LoginScreenProps = {
+  route?: {
+    params?: {
+      onLogin?: LegacyLoginHandler;
+    };
+  };
+  navigation: {
+    replace: (screen: string) => void;
+  };
+};
+
+export default function LoginScreen({ route, navigation }: LoginScreenProps) {
+  const { setUser } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +61,7 @@ export default function LoginScreen({ route, navigation }: any) {
 
   // 입력 검증
   const canSubmit = useMemo(() => {
-    const okEmail = /\S+@\S+\.\S+/.test(form.email);
+    const okEmail = /\S+@\S+\.\S+/.test(form.email.trim());
     const okPw = form.password.trim().length >= 4;
     if (isLogin) {
       return okEmail && okPw;
@@ -53,36 +74,35 @@ export default function LoginScreen({ route, navigation }: any) {
   const handleSubmit = async () => {
     if (!canSubmit || loading) return;
 
+    const email = form.email.trim();
+    const password = form.password;
+    const nickname = form.nickname.trim();
+
     try {
       setLoading(true);
 
       if (isLogin) {
-        // 로그인 요청
-        const userData = await login(form.email, form.password);
-        // userData 예:
-        // { user_id, email, nickname, role, status }
+        const { user, token } = await login(email, password);
 
-        // 전역 auth 상태 저장
-        setUser({
-          user_id: userData.user_id,
-          email: userData.email,
-          nickname: userData.nickname,
-          role: userData.role,
-          status: userData.status,
-        });
+        if (token) {
+          await AsyncStorage.setItem("userToken", token);
+        } else {
+          await AsyncStorage.removeItem("userToken");
+        }
 
-        // (옛 코드 호환) route.params.onLogin() 호출 유지 가능
+        setUser(user);
+
         const onLogin = route?.params?.onLogin;
         if (typeof onLogin === "function") {
           onLogin({
-            id: userData.user_id,
-            nickname: userData.nickname,
-            email: userData.email,
-            role: userData.role === "ADMIN" ? "admin" : "user",
+            id: user.user_id,
+            nickname: user.nickname,
+            email: user.email,
+            role: user.role === "ADMIN" ? "admin" : "user",
           });
         }
 
-        Alert.alert("환영합니다!", `${userData.nickname}님 로그인 완료`, [
+        Alert.alert("환영합니다!", `${user.nickname}님 로그인 완료`, [
           {
             text: "확인",
             onPress: () => {
@@ -91,31 +111,28 @@ export default function LoginScreen({ route, navigation }: any) {
           },
         ]);
       } else {
-        // 회원가입 요청
-        const newUser = await signUp(
-          form.email.trim(),
-          form.password.trim(),
-          form.nickname.trim()
-        );
+        const { user, token } = await signUp(email, password, nickname);
 
-        Alert.alert(
-          "가입 완료",
-          `${newUser.nickname}님, 회원가입이 완료되었습니다.\n이메일과 비밀번호로 로그인해 주세요.`,
-          [
-            {
-              text: "확인",
-              onPress: () => {
-                setIsLogin(true);
-              },
+        if (token) {
+          await AsyncStorage.setItem("userToken", token);
+        } else {
+          await AsyncStorage.removeItem("userToken");
+        }
+
+        setUser(user);
+
+        Alert.alert("가입 완료", `${user.nickname}님, 자동으로 로그인되었습니다.`, [
+          {
+            text: "확인",
+            onPress: () => {
+              navigation.replace("Root");
             },
-          ]
-        );
+          },
+        ]);
       }
-    } catch (err: any) {
-      Alert.alert(
-        isLogin ? "로그인 실패" : "회원가입 실패",
-        err.message || "잠시 후 다시 시도해 주세요."
-      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "잠시 후 다시 시도해 주세요.";
+      Alert.alert(isLogin ? "로그인 실패" : "회원가입 실패", message);
     } finally {
       setLoading(false);
     }

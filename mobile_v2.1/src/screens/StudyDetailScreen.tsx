@@ -46,9 +46,15 @@ export default function StudyDetailScreen({ route, navigation }: any) {
   // 임시: 유저가 없을 경우 가짜 유저
   const user: User = userParam ?? { id: 'me', nickname: '나', role: 'user' };
 
-  const [isMember, setIsMember] = useState(Math.random() > 0.5);
-  const isOwner = study?.ownerId === user.id;
-  const [joinStatus, setJoinStatus] = useState<'none' | 'pending' | 'approved'>('none');
+  const routeIsOwner = route?.params?.isOwner as boolean | undefined;
+  const inferredIsOwner = String(study?.ownerId ?? '') === String(user.id ?? '');
+  const isOwner = routeIsOwner ?? inferredIsOwner;
+
+  const routeIsMember = route?.params?.isMember as boolean | undefined;
+  const initialIsMember = isOwner || Boolean(routeIsMember);
+
+  const [isMember, setIsMember] = useState<boolean>(initialIsMember);
+  const [joinStatus, setJoinStatus] = useState<'none' | 'pending' | 'approved'>(initialIsMember ? 'approved' : 'none');
   const [tab, setTab] = useState<'members' | 'sessions'>('members');
 
   // ---- 웹과 동일한 mock 데이터
@@ -143,15 +149,7 @@ export default function StudyDetailScreen({ route, navigation }: any) {
             <View style={{ flexDirection:'row', justifyContent:'space-between' }}>
               <View style={{ flex:1, paddingRight: 12 }}>
                 <CardTitle style={{ fontSize: 18, marginBottom: 8 }}>{study.name}</CardTitle>
-                <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom: 8 }}>
-                  {/* AvatarFallback */}
-                  <View style={{ width:24, height:24, borderRadius:12, backgroundColor: theme.color.secondary, alignItems:'center', justifyContent:'center' }}>
-                    <Text style={{ fontSize:12, color: theme.color.onSecondary, fontWeight:'600' }}>
-                      {study.ownerNickname.charAt(0)}
-                    </Text>
-                  </View>
-                  <Text style={{ fontSize: 12, color: theme.color.mutedText }}>{study.ownerNickname}</Text>
-                </View>
+                <View style={{ marginBottom: 8 }} />
               </View>
               {getStatusBadge(study.status)}
             </View>
@@ -247,7 +245,8 @@ export default function StudyDetailScreen({ route, navigation }: any) {
                 onPress={() =>
                   navigation?.navigate?.('Attendance', {
                     study,
-                    user: { id: 'me', nickname: '나', gender: '남성', role: 'user' },
+                    user,
+                    isOwner,
                   })
                 }
                 style={{ flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}

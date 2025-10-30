@@ -253,7 +253,7 @@ export default function ProfileScreen({ route, navigation }: any) {
                   <Pressable
                     key={study.id}
                     onPress={() => {
-                      // 웹과 동일하게 상세로 이동 가능한 mock 객체 구성  :contentReference[oaicite:3]{index=3}
+                      const isOwnStudy = study.role === 'owner';
                       const mockStudy = {
                         id: study.id,
                         name: study.name,
@@ -267,12 +267,17 @@ export default function ProfileScreen({ route, navigation }: any) {
                         endDate: '2024-04-15',
                         maxMembers: 6,
                         currentMembers: 4,
-                        ownerId: '2',
-                        ownerNickname: '방장',
+                        ownerId: isOwnStudy ? user.id : '2',
+                        ownerNickname: isOwnStudy ? user.nickname : '방장',
                         status: study.status,
                         progress: study.progress,
                       };
-                      navigation?.navigate?.('StudyDetail', { study: mockStudy, user });
+                      navigation?.navigate?.('StudyDetail', {
+                        study: mockStudy,
+                        user,
+                        isMember: true,
+                        isOwner: isOwnStudy,
+                      });
                     }}
                     style={{ borderRadius: 12, overflow:'hidden' }}
                   >

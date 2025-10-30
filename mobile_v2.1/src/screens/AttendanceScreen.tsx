@@ -60,7 +60,10 @@ export default function AttendanceScreen({ route, navigation }: any) {
   };
   const user: User = route?.params?.user ?? { id: 'me', nickname: '나', gender: '남성', role: 'user' };
 
-  const [isOwner] = useState(study.ownerId === user.id);
+  const isOwnerParam = route?.params?.isOwner as boolean | undefined;
+  const [isOwner] = useState(
+    typeof isOwnerParam === 'boolean' ? isOwnerParam : study.ownerId === user.id
+  );
   const [currentCode, setCurrentCode] = useState('');
   const [isCodeActive, setIsCodeActive] = useState(false);
   const [inputCode, setInputCode] = useState('');
