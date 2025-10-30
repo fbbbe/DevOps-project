@@ -247,3 +247,210 @@ export async function getStudyDetail(studyId: string) {
   return mapRowToStudy(data);
 }
 
+/* ---------- Study members / join requests ---------- */
+
+export type StudyMemberRole = "owner" | "manager" | "member";
+
+export interface StudyMember {
+  memberId?: string;
+  userId: string;
+  nickname: string;
+  role: StudyMemberRole;
+  email?: string;
+  userStatus?: string;
+  joinedAt?: string;
+  attendanceRate?: number;
+  warnings: number;
+  gender?: string;
+}
+
+function toIsoString(input: any): string | undefined {
+  if (!input) return undefined;
+  try {
+    if (typeof input === "string") {
+      const trimmed = input.trim();
+      if (!trimmed) return undefined;
+      const numeric = Date.parse(trimmed);
+      return Number.isNaN(numeric) ? trimmed : new Date(numeric).toISOString();
+    }
+    if (input instanceof Date && !Number.isNaN(input.getTime())) {
+      return input.toISOString();
+    }
+    const parsed = new Date(input);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+  } catch {
+    return undefined;
+  }
+}
+
+function mapRowToMember(row: any): StudyMember {
+  const roleRaw = s(row.ROLE || row.role).toLowerCase();
+  let role: StudyMemberRole = "member";
+  if (roleRaw === "owner") role = "owner";
+  else if (roleRaw === "manager" || roleRaw === "leader") role = "manager";
+
+  const warningsValue = row.WARNING_COUNT ?? row.warnings ?? row.WARNING ?? 0;
+  const attendanceValue = row.ATTENDANCE_RATE ?? row.attendanceRate ?? row.ATTENDANCE ?? null;
+
+  return {
+    memberId: s(row.MEMBER_ID ?? row.study_member_id ?? row.memberId) || undefined,
+    userId: s(row.USER_ID ?? row.user_id ?? row.id),
+    nickname: s(row.NICKNAME ?? row.nickname) || "멤버",
+    role,
+    email: s(row.EMAIL ?? row.email) || undefined,
+    userStatus: s(row.STATUS ?? row.userStatus ?? row.user_status) || undefined,
+    joinedAt: toIsoString(row.JOINED_AT ?? row.joinedAt),
+    attendanceRate: attendanceValue == null ? undefined : Number(attendanceValue),
+    warnings: Number(warningsValue ?? 0),
+    gender: s(row.GENDER ?? row.gender) || undefined,
+  };
+}
+
+export async function fetchStudyMembers(studyId: string, token?: string): Promise<StudyMember[]> {
+  if (!studyId) return [];
+  const list = await api.get<any[]>(`/api/studies/${studyId}/members`, undefined, { token });
+  if (!Array.isArray(list)) return [];
+  return list
+    .map(mapRowToMember)
+    .filter((member, idx, arr) => member.userId && arr.findIndex((m) => m.userId === member.userId) === idx);
+}
+
+export type MembershipStatus =
+  | "guest"
+  | "none"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "cancelled"
+  | "member"
+  | "owner";
+
+export interface MembershipStatusResponse {
+  status: MembershipStatus;
+  requestId?: string;
+}
+
+function normalizeMembershipStatus(payload: any): MembershipStatusResponse {
+  const statusRaw = s(payload?.status ?? payload?.STATUS ?? payload?.membershipStatus).toLowerCase();
+  let status: MembershipStatus = "guest";
+  switch (statusRaw) {
+    case "owner":
+    case "leader":
+      status = "owner";
+      break;
+    case "member":
+      status = "member";
+      break;
+    case "pending":
+    case "requested":
+      status = "pending";
+      break;
+    case "approved":
+      status = "approved";
+      break;
+    case "rejected":
+    case "denied":
+      status = "rejected";
+      break;
+    case "cancelled":
+    case "canceled":
+      status = "cancelled";
+      break;
+    case "none":
+      status = "none";
+      break;
+    default:
+      status = "guest";
+  }
+
+  const requestId = s(
+    payload?.requestId ?? payload?.REQUEST_ID ?? payload?.request_id ?? payload?.latestRequestId
+  );
+
+  return requestId
+    ? { status, requestId }
+    : { status };
+}
+
+export async function fetchMembershipStatus(studyId: string, token?: string): Promise<MembershipStatusResponse> {
+  if (!studyId) return { status: "guest" };
+  const res = await api.get<any>(`/api/studies/${studyId}/membership`, undefined, { token });
+  return normalizeMembershipStatus(res ?? {});
+}
+
+export interface JoinRequestResult {
+  status: "pending" | "approved" | "already_member" | "rejected" | "cancelled";
+  requestId?: string;
+}
+
+export async function requestStudyJoin(
+  studyId: string,
+  options?: { message?: string; token?: string }
+): Promise<JoinRequestResult> {
+  const { message, token } = options ?? {};
+  const res = await api.postJSON<any>(`/api/studies/${studyId}/join-requests`, { message }, { token });
+  const status = s(res?.status ?? res?.STATUS).toLowerCase();
+  const requestId = s(res?.requestId ?? res?.REQUEST_ID);
+  return {
+    status: (status as JoinRequestResult["status"]) || "pending",
+    requestId: requestId || undefined,
+  };
+}
+
+export async function cancelStudyJoinRequest(
+  studyId: string,
+  token?: string
+): Promise<{ cancelled: boolean }> {
+  const res = await api.request<{ cancelled?: boolean }>(
+    `/api/studies/${studyId}/join-requests`,
+    { method: "DELETE", token }
+  );
+  return { cancelled: Boolean(res?.cancelled) };
+}
+
+export interface StudyJoinRequest {
+  requestId: string;
+  studyId: string;
+  userId: string;
+  nickname: string;
+  message?: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  requestedAt?: string;
+  updatedAt?: string;
+}
+
+function mapRowToJoinRequest(row: any): StudyJoinRequest {
+  return {
+    requestId: s(row.REQUEST_ID ?? row.request_id ?? row.id),
+    studyId: s(row.STUDY_ID ?? row.study_id),
+    userId: s(row.USER_ID ?? row.user_id),
+    nickname: s(row.NICKNAME ?? row.nickname) || "사용자",
+    message: s(row.MESSAGE ?? row.message) || undefined,
+    status: (s(row.STATUS ?? row.status).toLowerCase() as StudyJoinRequest["status"]) || "pending",
+    requestedAt: toIsoString(row.REQUESTED_AT ?? row.requestedAt),
+    updatedAt: toIsoString(row.UPDATED_AT ?? row.updatedAt),
+  };
+}
+
+export async function fetchJoinRequests(
+  studyId: string,
+  token?: string
+): Promise<StudyJoinRequest[]> {
+  const list = await api.get<any[]>(`/api/studies/${studyId}/join-requests`, undefined, { token });
+  if (!Array.isArray(list)) return [];
+  return list.map(mapRowToJoinRequest);
+}
+
+export async function decideJoinRequest(
+  requestId: string,
+  decision: "approve" | "reject",
+  token?: string
+): Promise<{ status: "approved" | "rejected" }> {
+  const res = await api.request<any>(`/api/join-requests/${requestId}`, {
+    method: "PATCH",
+    token,
+    body: { decision },
+  });
+  const status = s(res?.status ?? res?.STATUS).toLowerCase();
+  return { status: (status === "approved" ? "approved" : "rejected") };
+}

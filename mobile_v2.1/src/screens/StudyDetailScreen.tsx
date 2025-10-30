@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
@@ -6,10 +6,11 @@ import {
   Text,
   View,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import Screen from '../components/Screen';
 import theme from '../styles/theme';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
 import Button from '../components/Button';
 import Badge from '../components/Badge';
 import ProgressBar from '../components/ProgressBar';
@@ -17,6 +18,15 @@ import {
   ArrowLeft, MapPin, Users, Calendar, Clock, Tag, QrCode,
   BarChart3, Settings, MessageCircle, BookOpen, AlertTriangle, UserX
 } from 'lucide-react-native';
+import { useAuth } from '../context/AuthContext';
+import {
+  MembershipStatus,
+  cancelStudyJoinRequest,
+  fetchMembershipStatus,
+  fetchStudyMembers,
+  requestStudyJoin,
+  StudyMember,
+} from '../services/studyServices';
 
 // ---- 웹 타입과 맞춘 기본 타입 (필요시 공용 타입으로 분리해도 OK)
 export type Study = {
@@ -45,25 +55,96 @@ export default function StudyDetailScreen({ route, navigation }: any) {
   const { study, user: userParam } = (route?.params ?? {}) as RouteParams;
   // 임시: 유저가 없을 경우 가짜 유저
   const user: User = userParam ?? { id: 'me', nickname: '나', role: 'user' };
+  const { user: authUser } = useAuth();
+  const authToken = authUser?.token;
+  const authUserId = authUser?.user_id ?? (authUser as any)?.id ?? null;
 
   const routeIsOwner = route?.params?.isOwner as boolean | undefined;
-  const inferredIsOwner = String(study?.ownerId ?? '') === String(user.id ?? '');
+  const inferredIsOwner = (() => {
+    const ownerValue = String(study?.ownerId ?? '');
+    const authValue = authUserId != null ? String(authUserId) : null;
+    const routeValue = String(user.id ?? '');
+    return ownerValue === (authValue ?? routeValue);
+  })();
   const isOwner = routeIsOwner ?? inferredIsOwner;
 
   const routeIsMember = route?.params?.isMember as boolean | undefined;
   const initialIsMember = isOwner || Boolean(routeIsMember);
+  const selfUserId = authUserId != null ? String(authUserId) : String(user.id ?? '');
 
   const [isMember, setIsMember] = useState<boolean>(initialIsMember);
   const [joinStatus, setJoinStatus] = useState<'none' | 'pending' | 'approved'>(initialIsMember ? 'approved' : 'none');
+  const [joinRequestId, setJoinRequestId] = useState<string | null>(null);
+  const [joinRequestLoading, setJoinRequestLoading] = useState<boolean>(false);
   const [tab, setTab] = useState<'members' | 'sessions'>('members');
+  const [members, setMembers] = useState<StudyMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState<boolean>(true);
+  const [membersError, setMembersError] = useState<string | null>(null);
 
-  // ---- 웹과 동일한 mock 데이터
-  const mockMembers = useMemo(() => ([
-    { id: '1', nickname: '영어왕', gender: '여성', role: 'owner', status: 'active', attendanceRate: 95, warnings: 0 },
-    { id: '2', nickname: '스터디킹', gender: '남성', role: 'member', status: 'active', attendanceRate: 88, warnings: 0 },
-    { id: '3', nickname: '열공맨', gender: '남성', role: 'member', status: 'active', attendanceRate: 76, warnings: 1 },
-    { id: '4', nickname: '공부러버', gender: '여성', role: 'member', status: 'warning', attendanceRate: 52, warnings: 3 },
-  ]), []);
+  const buildMembersList = useCallback(
+    (base: StudyMember[], includeSelfOverride?: boolean): StudyMember[] => {
+      const includeSelf = includeSelfOverride ?? (isOwner || isMember);
+      const map = new Map<string, StudyMember>();
+
+      base.forEach((member) => {
+        if (!member) return;
+        const key = String(member.userId ?? '');
+        if (!key) return;
+        map.set(key, {
+          userId: key,
+          nickname: member.nickname || '멤버',
+          role: member.role || 'member',
+          gender: member.gender,
+          attendanceRate: member.attendanceRate,
+          warnings: member.warnings,
+          userStatus: member.userStatus,
+          email: member.email,
+          joinedAt: member.joinedAt,
+          memberId: member.memberId,
+        });
+      });
+
+      const ownerIdStr = String(study.ownerId ?? '');
+      if (ownerIdStr) {
+        const existing = map.get(ownerIdStr);
+        map.set(ownerIdStr, {
+          userId: ownerIdStr,
+          nickname: study.ownerNickname || existing?.nickname || '방장',
+          role: 'owner',
+          gender: existing?.gender,
+          attendanceRate: existing?.attendanceRate,
+          warnings: existing?.warnings,
+          userStatus: existing?.userStatus ?? 'owner',
+          email: existing?.email,
+          joinedAt: existing?.joinedAt,
+          memberId: existing?.memberId,
+        });
+      }
+
+      if (includeSelf && selfUserId) {
+        const existing = map.get(selfUserId);
+        map.set(selfUserId, {
+          userId: selfUserId,
+          nickname: user.nickname || existing?.nickname || '나',
+          role: isOwner ? 'owner' : existing?.role ?? 'member',
+          gender: existing?.gender,
+          attendanceRate: existing?.attendanceRate,
+          warnings: existing?.warnings,
+          userStatus: existing?.userStatus ?? (isOwner ? 'owner' : existing?.userStatus),
+          email: existing?.email,
+          joinedAt: existing?.joinedAt,
+          memberId: existing?.memberId,
+        });
+      }
+
+      return Array.from(map.values()).sort((a, b) => {
+        if (a.role === 'owner' && b.role !== 'owner') return -1;
+        if (a.role !== 'owner' && b.role === 'owner') return 1;
+        return a.nickname.localeCompare(b.nickname);
+      });
+    },
+    [selfUserId, isOwner, isMember, study.ownerId, study.ownerNickname, user.nickname]
+  );
 
   const mockSessions = useMemo(() => ([
     { id: '1', date: '2024-01-15', topic: '1주차: 기초 문법', attendance: 4, total: 4, progress: 100 },
@@ -71,6 +152,68 @@ export default function StudyDetailScreen({ route, navigation }: any) {
     { id: '3', date: '2024-01-29', topic: '3주차: 문장 구조', attendance: 4, total: 4, progress: 100 },
     { id: '4', date: '2024-02-05', topic: '4주차: 관계사', attendance: 3, total: 4, progress: 75 },
   ]), []);
+
+  const syncMembershipFlags = useCallback(
+    (status: MembershipStatus, requestId?: string | null) => {
+      setJoinRequestId(requestId ?? null);
+
+      if (status === 'owner' || status === 'member' || status === 'approved') {
+        setIsMember(true);
+        setJoinStatus('approved');
+        return;
+      }
+      if (status === 'pending') {
+        setIsMember(false);
+        setJoinStatus('pending');
+        return;
+      }
+      setIsMember(false);
+      setJoinStatus('none');
+    },
+    []
+  );
+
+  const refreshMembership = useCallback(async () => {
+    if (!study?.id) return;
+    try {
+      const res = await fetchMembershipStatus(study.id, authToken ?? undefined);
+      syncMembershipFlags(res.status, res.requestId);
+    } catch (err) {
+      console.warn('[StudyDetail] fetch membership failed', err);
+    }
+  }, [study?.id, authToken, syncMembershipFlags]);
+
+  useEffect(() => {
+    refreshMembership();
+  }, [refreshMembership]);
+
+  useEffect(() => {
+    let mounted = true;
+    setMembersLoading(true);
+    setMembersError(null);
+
+    fetchStudyMembers(study.id, authToken ?? undefined)
+      .then((list) => {
+        if (!mounted) return;
+        const merged = buildMembersList(list);
+        setMembers(merged);
+      })
+      .catch((err) => {
+        console.warn('[StudyDetail] fetch members failed', err);
+        if (!mounted) return;
+        setMembersError('멤버 정보를 불러오지 못했습니다.');
+        setMembers(buildMembersList([]));
+      })
+      .finally(() => {
+        if (mounted) {
+          setMembersLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [study.id, authToken, buildMembersList]);
 
   if (!study) {
     return (
@@ -91,18 +234,95 @@ export default function StudyDetailScreen({ route, navigation }: any) {
     }
   };
 
-  const getMemberStatusBadge = (status: string, warnings: number) => {
+  const getMemberStatusBadge = (status: string | undefined, warnings: number) => {
     if (warnings >= 3) return <Badge variant="destructive">경고 {warnings}회</Badge>;
     if (warnings > 0)  return <Badge variant="outline">주의 {warnings}회</Badge>;
+    if (status) {
+      const lowered = status.toLowerCase();
+      if (!['active', 'approved', 'member', 'owner'].includes(lowered)) {
+        return <Badge variant="outline">{status}</Badge>;
+      }
+    }
     return <Badge variant="secondary">정상</Badge>;
   };
 
-  const handleJoinRequest = () => {
-    setJoinStatus('pending');
-    setTimeout(() => {
-      setJoinStatus('approved');
-      setIsMember(true);
-    }, 1200);
+  const handleJoinRequest = async () => {
+    if (joinRequestLoading) return;
+
+    setJoinRequestLoading(true);
+    try {
+      const res = await requestStudyJoin(study.id, { token: authToken ?? undefined });
+      const normalizedStatus = res.status;
+
+      if (normalizedStatus === 'already_member') {
+        await refreshMembership();
+        try {
+          const latest = await fetchStudyMembers(study.id, authToken ?? undefined);
+          setMembers(buildMembersList(latest));
+        } catch (innerErr) {
+          console.warn('[StudyDetail] refresh members after already_member failed', innerErr);
+        }
+        return;
+      }
+
+      if (normalizedStatus === 'approved') {
+        syncMembershipFlags('approved', res.requestId);
+        try {
+          const latest = await fetchStudyMembers(study.id, authToken ?? undefined);
+          setMembers(buildMembersList(latest));
+        } catch (innerErr) {
+          console.warn('[StudyDetail] refresh members after approval failed', innerErr);
+          setMembers((prev) => buildMembersList(prev, true));
+        }
+        return;
+      }
+
+      if (normalizedStatus === 'pending') {
+        syncMembershipFlags('pending', res.requestId);
+        return;
+      }
+
+      if (normalizedStatus === 'rejected') {
+        syncMembershipFlags('rejected', res.requestId);
+        Alert.alert('참여 신청이 거절되었습니다.', '다시 신청하려면 잠시 후 시도해주세요.');
+        return;
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '참여 신청 처리 중 오류가 발생했습니다.';
+      Alert.alert('참여 신청 실패', message);
+    } finally {
+      setJoinRequestLoading(false);
+    }
+  };
+
+  const handleCancelJoinRequest = () => {
+    if (joinRequestLoading) return;
+    if (!joinRequestId) {
+      Alert.alert('취소할 요청을 찾을 수 없습니다.');
+      return;
+    }
+
+    Alert.alert('참여 요청 취소', '참여 요청을 취소하시겠습니까?', [
+      { text: '아니오', style: 'cancel' },
+      {
+        text: '예',
+        style: 'destructive',
+        onPress: () => {
+          setJoinRequestLoading(true);
+          cancelStudyJoinRequest(study.id, authToken ?? undefined)
+            .then(() => {
+              syncMembershipFlags('none', null);
+            })
+            .catch((err) => {
+              const message = err instanceof Error ? err.message : '참여 요청 취소 중 오류가 발생했습니다.';
+              Alert.alert('취소 실패', message);
+            })
+            .finally(() => {
+              setJoinRequestLoading(false);
+            });
+        },
+      },
+    ]);
   };
 
   const handleLeaveStudy = () => {
@@ -110,6 +330,7 @@ export default function StudyDetailScreen({ route, navigation }: any) {
       { text: '취소', style: 'cancel' },
       { text: '나가기', style: 'destructive', onPress: () => {
           setIsMember(false); setJoinStatus('none');
+          setMembers(prev => buildMembersList(prev.filter(member => member.userId !== selfUserId), false));
         }
       }
     ]);
@@ -220,13 +441,27 @@ export default function StudyDetailScreen({ route, navigation }: any) {
         {!isMember && !isOwner && (
           <View style={{ marginTop: 12 }}>
             {joinStatus === 'none' && (
-              <Button size="lg" onPress={handleJoinRequest} disabled={study.status !== 'recruiting'}>
-                {study.status === 'recruiting' ? '참여 신청하기' : '모집 완료'}
+              <Button
+                size="lg"
+                onPress={handleJoinRequest}
+                disabled={study.status !== 'recruiting' || joinRequestLoading}
+              >
+                {joinRequestLoading
+                  ? '신청 중...'
+                  : study.status === 'recruiting'
+                    ? '참여 신청하기'
+                    : '모집 완료'}
               </Button>
             )}
             {joinStatus === 'pending' && (
-              <Button size="lg" variant="outline" disabled style={{ marginTop: 8 }}>
-                승인 대기중...
+              <Button
+                size="lg"
+                variant="outline"
+                onPress={handleCancelJoinRequest}
+                disabled={joinRequestLoading}
+                style={{ marginTop: 8 }}
+              >
+                {joinRequestLoading ? '취소 중...' : '승인 대기중... (탭하여 취소)'}
               </Button>
             )}
             {joinStatus === 'approved' && (
@@ -284,7 +519,9 @@ export default function StudyDetailScreen({ route, navigation }: any) {
         <View style={S.tabsWrap}>
           <View style={S.tabs}>
             <Pressable onPress={()=>setTab('members')} style={[S.tabBtn, tab==='members' && S.tabActive]}>
-              <Text style={[S.tabTxt, tab==='members' && S.tabTxtActive]}>멤버 ({mockMembers.length})</Text>
+              <Text style={[S.tabTxt, tab==='members' && S.tabTxtActive]}>
+                멤버 ({membersLoading ? '...' : members.length})
+              </Text>
             </Pressable>
             <Pressable onPress={()=>setTab('sessions')} style={[S.tabBtn, tab==='sessions' && S.tabActive]}>
               <Text style={[S.tabTxt, tab==='sessions' && S.tabTxtActive]}>회차 ({mockSessions.length})</Text>
@@ -293,34 +530,58 @@ export default function StudyDetailScreen({ route, navigation }: any) {
 
           {tab==='members' && (
             <View style={{ gap: 12, marginTop: 12 }}>
-              {mockMembers.map(member => (
-                <Card key={member.id}>
+              {membersLoading && (
+                <View style={{ paddingVertical: 32, alignItems: 'center', justifyContent: 'center' }}>
+                  <ActivityIndicator size="small" color={theme.color.primary} />
+                  <Text style={{ marginTop: 8, color: theme.color.mutedText }}>멤버 정보를 불러오는 중...</Text>
+                </View>
+              )}
+
+              {!membersLoading && membersError && (
+                <Card>
+                  <CardContent style={{ padding: 16 }}>
+                    <Text style={{ color: theme.color.destructive }}>{membersError}</Text>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!membersLoading && !membersError && members.length === 0 && (
+                <Card>
+                  <CardContent style={{ padding: 16 }}>
+                    <Text style={{ color: theme.color.mutedText }}>
+                      아직 등록된 멤버가 없습니다. 첫 번째 멤버가 되어보세요!
+                    </Text>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!membersLoading && !membersError && members.map(member => (
+                <Card key={member.userId}>
                   <CardContent style={{ padding: 12 }}>
                     <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
                       <View style={{ flexDirection:'row', alignItems:'center', gap:12 }}>
                         <View style={{ width:32, height:32, borderRadius:16, backgroundColor: theme.color.secondary, alignItems:'center', justifyContent:'center' }}>
                           <Text style={{ fontWeight:'700', color: theme.color.onSecondary }}>
-                            {member.nickname.charAt(0)}
+                            {member.nickname?.charAt(0) ?? '멤'}
                           </Text>
                         </View>
                         <View>
                           <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
                             <Text style={{ fontWeight:'600' }}>{member.nickname}</Text>
-                            {(member.id === user.id || user.role === 'admin') && (
-                              <Text style={{ fontSize:12, color: theme.color.mutedText }}>({member.gender})</Text>
-                            )}
                             {member.role === 'owner' && (
                               <Badge variant="secondary">방장</Badge>
                             )}
                           </View>
                           <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginTop: 4 }}>
-                            <Text style={{ fontSize:12, color: theme.color.mutedText }}>출석률 {member.attendanceRate}%</Text>
-                            {getMemberStatusBadge(member.status, member.warnings)}
+                            <Text style={{ fontSize:12, color: theme.color.mutedText }}>
+                              출석률 {member.attendanceRate != null ? `${member.attendanceRate}%` : '-'}
+                            </Text>
+                            {getMemberStatusBadge(member.userStatus, member.warnings)}
                           </View>
                         </View>
                       </View>
 
-                      {(isOwner && member.id !== user.id) && (
+                      {(isOwner && member.userId !== selfUserId) && (
                         <View style={{ flexDirection:'row', gap:6 }}>
                           {member.warnings >= 3 && (
                             <Button variant="destructive" size="sm" onPress={() => kickMember(member.nickname)}>
