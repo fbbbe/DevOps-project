@@ -46,9 +46,12 @@ export default function StudyDetailScreen({ route, navigation }: any) {
   // 임시: 유저가 없을 경우 가짜 유저
   const user: User = userParam ?? { id: 'me', nickname: '나', role: 'user' };
 
-  const [isMember, setIsMember] = useState(Math.random() > 0.5);
   const isOwner = study?.ownerId === user.id;
-  const [joinStatus, setJoinStatus] = useState<'none' | 'pending' | 'approved'>('none');
+  const initialIsMemberParam = route?.params?.isMember as boolean | undefined;
+  const initialIsMember = isOwner || Boolean(initialIsMemberParam);
+
+  const [isMember, setIsMember] = useState<boolean>(initialIsMember);
+  const [joinStatus, setJoinStatus] = useState<'none' | 'pending' | 'approved'>(initialIsMember ? 'approved' : 'none');
   const [tab, setTab] = useState<'members' | 'sessions'>('members');
 
   // ---- 웹과 동일한 mock 데이터

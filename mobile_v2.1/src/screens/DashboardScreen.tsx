@@ -285,6 +285,7 @@ export default function DashboardScreen() {
               study={study}
               showProgress
               isFavorite={favoriteIds.includes(study.id)}
+              defaultIsMember
               onToggleFavorite={() => {
                 setFavoriteIds(ids =>
                   ids.includes(study.id)
@@ -337,12 +338,14 @@ function StudyCard({
   study,
   showProgress,
   isFavorite,
-  onToggleFavorite
+  onToggleFavorite,
+  defaultIsMember = false,
 }: {
   study: Study;
   showProgress?: boolean;
   isFavorite?: boolean;
   onToggleFavorite: ()=>void;
+  defaultIsMember?: boolean;
 }) {
   const navigation = useNavigation<any>();
 
@@ -351,6 +354,7 @@ function StudyCard({
       onPress={() => navigation.navigate('StudyDetail', {
         study,
         user: { id: 'me', nickname: '나', role: 'user' }, // 필요 시 실제 유저로 교체
+        isMember: defaultIsMember,
       })}
       style={S.studyPressable}
     >

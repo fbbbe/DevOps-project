@@ -272,7 +272,7 @@ export default function ProfileScreen({ route, navigation }: any) {
                         status: study.status,
                         progress: study.progress,
                       };
-                      navigation?.navigate?.('StudyDetail', { study: mockStudy, user });
+                      navigation?.navigate?.('StudyDetail', { study: mockStudy, user, isMember: true });
                     }}
                     style={{ borderRadius: 12, overflow:'hidden' }}
                   >
