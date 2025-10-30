@@ -8,11 +8,13 @@ export function attachUserFromToken(req, _res, next) {
       : header.trim();
 
     if (!token) {
+      // console.debug("[auth] no authorization header");
       return next();
     }
 
     const sessionUser = getUserForToken(token);
     if (!sessionUser) {
+      console.warn("[auth] invalid token received", token.slice(0, 12));
       return next();
     }
 

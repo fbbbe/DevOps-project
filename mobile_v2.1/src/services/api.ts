@@ -69,6 +69,12 @@ export async function request<T>(
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+    if (__DEV__) {
+      console.log(
+        "[api.request] auth token attached",
+        headers["Authorization"].slice(0, 20) + "..."
+      );
+    }
   }
   // --- [수정 끝] ---
 

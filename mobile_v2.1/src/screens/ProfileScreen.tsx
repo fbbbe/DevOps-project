@@ -210,7 +210,7 @@ export default function ProfileScreen() {
       if (token) {
         await AsyncStorage.setItem("userToken", token);
       }
-      setUser(user);
+      setUser({ ...user, token });
       setEditing(false);
       Alert.alert("완료", "닉네임이 수정되었습니다.");
     } catch (err) {

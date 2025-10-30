@@ -1,13 +1,16 @@
 // src/context/AuthContext.tsx
 import React, { createContext, useContext, useState } from "react";
 
-export type AuthUser = {
-  user_id: number;
-  email: string;
-  nickname: string;
-  role: string;
-  status: string;
-} | null;
+export type AuthUser =
+  | {
+      user_id: number;
+      email: string;
+      nickname: string;
+      role: string;
+      status: string;
+      token?: string;
+    }
+  | null;
 
 type AuthContextType = {
   user: AuthUser;
