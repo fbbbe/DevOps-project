@@ -6,12 +6,13 @@ import Badge from '../components/Badge';
 import ProgressBar from '../components/ProgressBar';
 import SegmentTabs from '../components/SegmentTabs';
 import Select, { Option } from '../components/Select';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/Card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/Card';
 import theme from '../styles/theme';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Search, MapPin, Users, Calendar, BookOpen, Heart } from 'lucide-react-native';
 import { STUDY_SUBJECTS } from '../data/subjects';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { fetchStudies } from '../services/studyServices';
 
 // === 웹과 동일 KOREA_REGIONS (필요 구역만 우선 반영, 전체 복붙도 OK) ===
 export const KOREA_REGIONS: Record<string, string[]> = {
@@ -34,38 +35,73 @@ export const KOREA_REGIONS: Record<string, string[]> = {
   '제주특별자치도': ['서귀포시','제주시'],
 };
 
-// === 웹과 동일 Mock data ===
+// 이 화면에서 사용하는 Study 타입
 type Study = {
-  id: string; name: string; subject: string; description: string; tags: string[];
-  region: string; regionDetail?: { sido: string; sigungu: string; dongEupMyeon?: string };
-  type: 'online' | 'offline'; duration: 'short' | 'long';
-  startDate: string; endDate?: string; maxMembers: number; currentMembers: number;
-  ownerId: string; ownerNickname: string; status: 'recruiting'|'active'|'completed'; progress?: number;
+  id: string;
+  name: string;
+  subject: string;
+  description: string;
+  tags: string[];
+  region: string;
+  regionDetail?: { sido: string; sigungu: string; dongEupMyeon?: string };
+  type: 'online' | 'offline';
+  duration: 'short' | 'long';
+  startDate: string;
+  endDate?: string;
+  maxMembers: number;
+  currentMembers: number;
+  ownerId: string;
+  ownerNickname: string;
+  status: 'recruiting' | 'active' | 'completed';
+  progress?: number;
 };
 
-const mockStudies: Study[] = [
-  { id:'1', name:'토익 900점 달성하기', subject:'어학', description:'3개월 안에 토익 900점을 목표로 하는 스터디입니다.', tags:['토익','영어','시험준비'], region:'서울특별시 강남구 역삼동',
-    regionDetail:{ sido:'서울특별시', sigungu:'강남구', dongEupMyeon:'역삼동' }, type:'offline', duration:'short',
-    startDate:'2024-01-15', endDate:'2024-04-15', maxMembers:6, currentMembers:4, ownerId:'2', ownerNickname:'영어왕', status:'recruiting', progress:65 },
-  { id:'2', name:'정보처리기사 실기 준비', subject:'IT/프로그래밍', description:'정보처리기사 실기시험을 함께 준비해요.', tags:['정보처리기사','IT','자격증'], region:'온라인',
-    type:'online', duration:'short', startDate:'2024-02-01', endDate:'2024-05-01', maxMembers:8, currentMembers:6, ownerId:'3', ownerNickname:'코딩마스터', status:'active', progress:40 },
-  { id:'3', name:'경영학 원서 읽기 모임', subject:'마케팅/경영', description:'매주 경영학 원서를 읽고 토론하는 장기 스터디입니다.', tags:['경영학','원서','토론'], region:'서울특별시 마포구 서교동',
-    regionDetail:{ sido:'서울특별시', sigungu:'마포구', dongEupMyeon:'서교동' }, type:'offline', duration:'long',
-    startDate:'2024-01-01', endDate:'2024-12-31', maxMembers:10, currentMembers:8, ownerId:'4', ownerNickname:'경영컨설턴트', status:'active' },
-];
-const myStudies = mockStudies.filter(()=> Math.random() > 0.5);
-
 export default function DashboardScreen() {
-  // ==== 상태 (웹과 동일) ====
+  // ==== 서버에서 가져온 스터디 목록 상태 ====
+  const [studies, setStudies] = useState<Study[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // ==== 기존 상태 (UI 그대로 유지) ====
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSido, setSelectedSido] = useState('all');
   const [selectedSigungu, setSelectedSigungu] = useState('all');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [availableSigungu, setAvailableSigungu] = useState<string[]>([]);
+  const [tab, setTab] = useState<'all'|'my'|'favorites'>('all');
 
-  const filteredStudies = useMemo(()=> {
-    let filtered = mockStudies;
+  const isFocused = useIsFocused();
+
+  // 화면에 돌아올 때마다 최신 스터디 목록 불러오기
+  useEffect(() => {
+    if (!isFocused) return;
+
+    const load = async () => {
+      try {
+        setLoading(true);
+        const list = await fetchStudies();
+        // fetchStudies()가 백엔드 데이터를 우리 Study 형태로 매핑해준다고 가정
+        setStudies(list as Study[]);
+      } catch (err) {
+        console.log('스터디 목록 불러오기 실패:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [isFocused]);
+
+  // "내 스터디" 탭 데이터
+  // 아직 실제 사용자 정보 연결 전이므로 기존 코드의 무작위 필터 방식 유지
+  const myStudies = useMemo(() => {
+    return studies.filter(() => Math.random() > 0.5);
+  }, [studies]);
+
+  // 검색/필터 적용된 스터디 목록
+  const filteredStudies = useMemo(() => {
+    let filtered = studies;
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(study =>
@@ -74,6 +110,7 @@ export default function DashboardScreen() {
         study.tags.some(tag => tag.toLowerCase().includes(q))
       );
     }
+
     if (selectedSido !== 'all') {
       if (selectedSido === '온라인') {
         filtered = filtered.filter(study => study.type === 'online');
@@ -84,16 +121,19 @@ export default function DashboardScreen() {
         }
       }
     }
+
     if (selectedSubject !== 'all') {
       filtered = filtered.filter(study => study.subject === selectedSubject);
     }
-    return filtered;
-  }, [searchQuery, selectedSido, selectedSigungu, selectedSubject]);
 
-  // 시/도 변경 핸들러 (웹 동일)
+    return filtered;
+  }, [studies, searchQuery, selectedSido, selectedSigungu, selectedSubject]);
+
+  // 시/도 선택 시 시/군/구 옵션 업데이트 (기존 로직 유지)
   const handleSidoChange = (sido: string) => {
     setSelectedSido(sido);
     setSelectedSigungu('all');
+
     if (sido !== 'all' && sido !== '온라인') {
       setAvailableSigungu(KOREA_REGIONS[sido] ?? []);
     } else {
@@ -101,21 +141,23 @@ export default function DashboardScreen() {
     }
   };
 
-  useEffect(()=>{ /* filteredStudies는 useMemo에서 자동 갱신 */ }, [searchQuery, selectedSido, selectedSigungu, selectedSubject]);
+  // 이건 기존 코드에서 filteredStudies 의존 걸어둔 useEffect 형태를 그대로 남김
+  useEffect(() => {
+    // filteredStudies는 useMemo에서 자동 계산됨
+  }, [searchQuery, selectedSido, selectedSigungu, selectedSubject, filteredStudies]);
 
-  // Tabs (전체 / 내 스터디 / 찜)
-  const [tab, setTab] = useState<'all'|'my'|'favorites'>('all');
-
-  // Select options
+  // Select용 옵션들 (기존 스타일 유지)
   const sidoOptions: Option[] = [
     { label:'전체 지역', value:'all' },
     { label:'온라인', value:'온라인' },
     ...Object.keys(KOREA_REGIONS).map(s=>({ label:s, value:s }))
   ];
+
   const sigunguOptions: Option[] = [
     { label:'전체 시/군/구', value:'all' },
     ...availableSigungu.map(g=>({ label:g, value:g }))
   ];
+
   const subjectOptions: Option[] = [
     { label:'전체 주제', value:'all' },
     ...STUDY_SUBJECTS.map(s=>({ label:s.label, value:s.value }))
@@ -126,7 +168,8 @@ export default function DashboardScreen() {
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View style={S.header}>
           <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
@@ -138,16 +181,22 @@ export default function DashboardScreen() {
         {/* Welcome */}
         <View style={{ marginTop: 12, marginBottom: 12 }}>
           <Text style={{ fontSize:16, marginBottom: 4 }}>안녕하세요! 👋</Text>
-          <Text style={{ color: theme.color.mutedText, fontSize: 12 }}>새로운 스터디를 찾아보거나 만들어보세요.</Text>
+          <Text style={{ color: theme.color.mutedText, fontSize: 12 }}>
+            새로운 스터디를 찾아보거나 만들어보세요.
+          </Text>
         </View>
 
         {/* Search */}
         <View style={{ flexDirection:'row', gap:8, marginBottom: 12 }}>
           <View style={{ flex:1 }}>
-            <Input placeholder="스터디 검색..." value={searchQuery} onChangeText={setSearchQuery} />
+            <Input
+              placeholder="스터디 검색..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
           </View>
           <Button variant="outline" size="icon">
-          <Search size={22} strokeWidth={2.2} color={theme.color.text} />
+            <Search size={22} strokeWidth={2.2} color={theme.color.text} />
           </Button>
         </View>
 
@@ -155,81 +204,127 @@ export default function DashboardScreen() {
         <View style={{ gap:8, marginBottom: 12 }}>
           <View style={{ flexDirection:'row', gap:8 }}>
             <View style={{ flex:1 }}>
-              <Select value={selectedSido} onChange={handleSidoChange} placeholder="시/도" options={sidoOptions} />
+              <Select
+                value={selectedSido}
+                onChange={handleSidoChange}
+                placeholder="시/도"
+                options={sidoOptions}
+              />
             </View>
 
             {(selectedSido !== 'all' && selectedSido !== '온라인' && availableSigungu.length > 0) ? (
               <View style={{ flex:1 }}>
-                <Select value={selectedSigungu} onChange={setSelectedSigungu} placeholder="시/군/구" options={sigunguOptions} />
+                <Select
+                  value={selectedSigungu}
+                  onChange={setSelectedSigungu}
+                  placeholder="시/군/구"
+                  options={sigunguOptions}
+                />
               </View>
             ) : (
               <View style={{ flex:1 }}>
-                <Select value={selectedSubject} onChange={setSelectedSubject} placeholder="주제" options={subjectOptions} />
+                <Select
+                  value={selectedSubject}
+                  onChange={setSelectedSubject}
+                  placeholder="주제"
+                  options={subjectOptions}
+                />
               </View>
             )}
           </View>
 
           {(selectedSido !== 'all' && selectedSido !== '온라인' && availableSigungu.length > 0) && (
-            <Select value={selectedSubject} onChange={setSelectedSubject} placeholder="주제" options={subjectOptions} />
+            <Select
+              value={selectedSubject}
+              onChange={setSelectedSubject}
+              placeholder="주제"
+              options={subjectOptions}
+            />
           )}
         </View>
 
-        <SegmentTabs value={tab} onChange={setTab} tabs={[{ value: 'all', label: '전체' }, { value: 'my', label: '내 스터디' }, { value: 'favorites', label: '찜' },]} />
+        <SegmentTabs
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { value: 'all', label: '전체' },
+            { value: 'my', label: '내 스터디' },
+            { value: 'favorites', label: '찜' },
+          ]}
+        />
 
         {/* Lists */}
-        {tab==='all' && (
-          filteredStudies.length ? filteredStudies.map(study=>(
+        {tab === 'all' && (
+          filteredStudies.length ? filteredStudies.map(study => (
             <StudyCard
               key={study.id}
               study={study}
               isFavorite={favoriteIds.includes(study.id)}
-              onToggleFavorite={()=>{
-                setFavoriteIds(ids => ids.includes(study.id) ? ids.filter(x=>x!==study.id) : [...ids, study.id]);
+              onToggleFavorite={() => {
+                setFavoriteIds(ids =>
+                  ids.includes(study.id)
+                    ? ids.filter(x => x !== study.id)
+                    : [...ids, study.id]
+                );
               }}
             />
           )) : (
             <View style={S.empty}>
               <Search size={48} color={theme.color.mutedText} />
-              <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>검색 결과가 없습니다.</Text>
+              <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>
+                {loading ? '불러오는 중...' : '검색 결과가 없습니다.'}
+              </Text>
             </View>
           )
         )}
 
-        {tab==='my' && (
-          myStudies.length ? myStudies.map(study=>(
+        {tab === 'my' && (
+          myStudies.length ? myStudies.map(study => (
             <StudyCard
               key={study.id}
               study={study}
               showProgress
               isFavorite={favoriteIds.includes(study.id)}
-              onToggleFavorite={()=>{
-                setFavoriteIds(ids => ids.includes(study.id) ? ids.filter(x=>x!==study.id) : [...ids, study.id]);
+              onToggleFavorite={() => {
+                setFavoriteIds(ids =>
+                  ids.includes(study.id)
+                    ? ids.filter(x => x !== study.id)
+                    : [...ids, study.id]
+                );
               }}
             />
           )) : (
             <View style={S.empty}>
               <Users size={48} color={theme.color.mutedText} />
-              <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>참여 중인 스터디가 없습니다.</Text>
+              <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>
+                {loading ? '불러오는 중...' : '참여 중인 스터디가 없습니다.'}
+              </Text>
             </View>
           )
         )}
 
-        {tab==='favorites' && (
-          filteredStudies.filter(s=>favoriteIds.includes(s.id)).length ? filteredStudies.filter(s=>favoriteIds.includes(s.id)).map(study=>(
-            <StudyCard
-              key={study.id}
-              study={study}
-              isFavorite
-              onToggleFavorite={()=>{
-                setFavoriteIds(ids => ids.filter(x=>x!==study.id));
-              }}
-            />
-          )) : (
-            <View style={S.empty}>
-              <Heart size={48} color={theme.color.mutedText} />
-              <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>찜한 스터디가 없습니다.</Text>
-            </View>
-          )
+        {tab === 'favorites' && (
+          filteredStudies.filter(s => favoriteIds.includes(s.id)).length
+            ? filteredStudies
+                .filter(s => favoriteIds.includes(s.id))
+                .map(study => (
+                  <StudyCard
+                    key={study.id}
+                    study={study}
+                    isFavorite
+                    onToggleFavorite={() => {
+                      setFavoriteIds(ids => ids.filter(x => x !== study.id));
+                    }}
+                  />
+                ))
+            : (
+              <View style={S.empty}>
+                <Heart size={48} color={theme.color.mutedText} />
+                <Text style={{ color: theme.color.mutedText, marginTop: 8 }}>
+                  {loading ? '불러오는 중...' : '찜한 스터디가 없습니다.'}
+                </Text>
+              </View>
+            )
         )}
 
         <View style={{ height: 20 }} />
@@ -239,8 +334,16 @@ export default function DashboardScreen() {
 }
 
 function StudyCard({
-  study, showProgress, isFavorite, onToggleFavorite
-}:{ study: Study; showProgress?: boolean; isFavorite?: boolean; onToggleFavorite: ()=>void; }) {
+  study,
+  showProgress,
+  isFavorite,
+  onToggleFavorite
+}:{
+  study: Study;
+  showProgress?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite: ()=>void;
+}) {
   const navigation = useNavigation<any>();
 
   return (
@@ -256,9 +359,11 @@ function StudyCard({
           <View style={{ flexDirection:'row', justifyContent:'space-between', gap:12 }}>
             <View style={{ flex:1, minWidth:0 }}>
               <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: 6 }}>
-                <CardTitle style={{ fontSize: 16 }} numberOfLines={1}>{study.name}</CardTitle>
+                <CardTitle style={{ fontSize: 16 }} numberOfLines={1}>
+                  {study.name}
+                </CardTitle>
 
-                {/* 찜 아이콘은 탭 전파 막기 (가드 추가) */}
+                {/* 찜 아이콘 */}
                 <Pressable
                   onPress={(e:any) => {
                     if (typeof e?.stopPropagation === 'function') e.stopPropagation();
@@ -275,18 +380,24 @@ function StudyCard({
                 </Pressable>
               </View>
 
-              <CardDescription style={{ fontSize: 12 }}>{study.ownerNickname}</CardDescription>
-              <Text style={{ fontSize:12, color: theme.color.mutedText, marginTop: 6 }} numberOfLines={2}>
+              <CardDescription style={{ fontSize: 12 }}>
+                {study.ownerNickname}
+              </CardDescription>
+
+              <Text
+                style={{ fontSize:12, color: theme.color.mutedText, marginTop: 6 }}
+                numberOfLines={2}
+              >
                 {study.description}
               </Text>
 
               <View style={{ flexDirection:'row', flexWrap:'wrap', gap:4, marginTop: 8 }}>
-                {study.tags.slice(0,3).map(tag=>(
+                {study.tags.slice(0,3).map(tag => (
                   <Badge key={tag} variant="outline" style={{ paddingVertical: 2 }}>
                     <Text style={{ fontSize: 12 }}>#{tag}</Text>
                   </Badge>
                 ))}
-                {study.tags.length>3 && (
+                {study.tags.length > 3 && (
                   <Badge variant="outline" style={{ paddingVertical: 2 }}>
                     <Text style={{ fontSize: 12 }}>+{study.tags.length-3}</Text>
                   </Badge>
@@ -301,24 +412,41 @@ function StudyCard({
 
               <View style={{ flexDirection:'row', alignItems:'center', gap:4, marginTop: 6 }}>
                 <MapPin size={12} color={theme.color.mutedText} />
-                <Text style={{ fontSize: 12, color: theme.color.mutedText }} numberOfLines={1}>
-                  {study.type==='online' ? '온라인' : (study.regionDetail?.dongEupMyeon ?? study.region)}
+                <Text
+                  style={{ fontSize: 12, color: theme.color.mutedText }}
+                  numberOfLines={1}
+                >
+                  {study.type==='online'
+                    ? '온라인'
+                    : (study.regionDetail?.dongEupMyeon ?? study.region)}
                 </Text>
               </View>
+
               <View style={{ flexDirection:'row', alignItems:'center', gap:4 }}>
                 <Users size={12} color={theme.color.mutedText} />
-                <Text style={{ fontSize: 12, color: theme.color.mutedText }}>{study.currentMembers}/{study.maxMembers}</Text>
+                <Text style={{ fontSize: 12, color: theme.color.mutedText }}>
+                  {study.currentMembers}/{study.maxMembers}
+                </Text>
               </View>
+
               <View style={{ flexDirection:'row', alignItems:'center', gap:4 }}>
                 <Calendar size={12} color={theme.color.mutedText} />
-                <Text style={{ fontSize: 12, color: theme.color.mutedText }}>{study.startDate.slice(5)}</Text>
+                <Text style={{ fontSize: 12, color: theme.color.mutedText }}>
+                  {study.startDate.slice(5)}
+                </Text>
               </View>
             </View>
           </View>
         </CardHeader>
 
         {showProgress && study.progress !== undefined && (
-          <CardContent style={{ paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.color.border }}>
+          <CardContent
+            style={{
+              paddingTop: 12,
+              borderTopWidth: 1,
+              borderTopColor: theme.color.border
+            }}
+          >
             <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom: 4 }}>
               <Text style={{ fontSize: 12 }}>진행률</Text>
               <Text style={{ fontSize: 12 }}>{study.progress}%</Text>
@@ -332,7 +460,18 @@ function StudyCard({
 }
 
 const S = StyleSheet.create({
-  header: { borderBottomWidth:1, borderBottomColor: theme.color.border, paddingBottom: 8 },
-  logo: { fontSize: 20, fontWeight: '700', color: theme.color.text },
-  empty:{ alignItems:'center', paddingVertical: 32 },
+  header: {
+    borderBottomWidth:1,
+    borderBottomColor: theme.color.border,
+    paddingBottom: 8
+  },
+  logo: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.color.text
+  },
+  empty:{
+    alignItems:'center',
+    paddingVertical: 32
+  },
 });

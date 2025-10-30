@@ -1,105 +1,58 @@
-// src/services/studyServices.ts
+// mobile_v2.1/src/services/studyServices.ts
 import api from "./api";
 
-export type Study = {
-  id: string;
-  name: string;
-  description: string;
-  tags: string[];
-  region: string;
-  type: "online" | "offline";
-  duration: "short" | "long";
-  startDate: string;
-  endDate?: string;
-  maxMembers: number;
-  currentMembers: number;
-  ownerNickname: string;
-  status: "recruiting" | "active" | "completed";
-  progress?: number;
+// 안전 문자열화
+const s = (v: any, def = "") => {
+  if (v === null || v === undefined) return def;
+  try { return String(v); } catch { return def; }
 };
 
-export async function getStudies(
-  token: string,
-  filter: "all" | "recruiting" | "active" | "completed" | "my" | "favorites"
-) {
-  // 서버가 /studies?filter=... 형태로 받는다고 가정
-  const query = filter === "all" ? "" : `?filter=${encodeURIComponent(filter)}`;
+// 서버 row -> 화면 Study
+function mapRowToStudy(row: any) {
+  const isOnline =
+    s(row.IS_ONLINE).toUpperCase() === "Y" ||
+    s(row.IS_ONLINE).toLowerCase() === "online";
 
-  const data = await api.request<Study[]>(`/studies${query}`, {
-    method: "GET",
-    token,
-  });
+  const duration =
+    s(row.TERM_TYPE).toLowerCase() === "long" ? "long" : "short";
 
-  return data;
+  let mappedStatus: "recruiting" | "active" | "completed" = "recruiting";
+  const rawStatus = s(row.STATUS).toLowerCase();
+  if (rawStatus === "open") mappedStatus = "recruiting";
+  else if (rawStatus === "active") mappedStatus = "active";
+  else if (rawStatus === "closed" || rawStatus === "expired" || rawStatus === "done")
+    mappedStatus = "completed";
+
+  return {
+    id: s(row.STUDY_ID),
+    name: s(row.NAME),                // ← LOB일 가능성 대비
+    subject: row.TOPIC_ID ? s(row.TOPIC_ID) : "기타",
+    description: s(row.DESCRIPTION),  // ← LOB일 가능성 대비
+    tags: [],
+
+    type: isOnline ? "online" : "offline",
+    duration,
+
+    region: s(row.REGION_PATH) || s(row.REGION_CODE),
+    regionDetail: undefined,
+
+    startDate: row.START_DATE ? s(row.START_DATE).slice(0, 10) : "",
+    endDate: row.END_DATE ? s(row.END_DATE).slice(0, 10) : undefined,
+
+    maxMembers: Number(row.MAX_MEMBERS ?? 10),
+    currentMembers: Number(row.CURRENT_MEMBERS ?? 1),
+
+    ownerId: s(row.CREATED_BY),
+    ownerNickname: "호스트",
+
+    status: mappedStatus,
+    progress: Number(row.PROGRESS_PCT ?? 0),
+  };
 }
 
-export async function getStudyDetail(token: string, studyId: string) {
-  const data = await api.request<Study>(`/studies/${studyId}`, {
-    method: "GET",
-    token,
-  });
-  return data;
-}
-
-export async function createStudy(token: string, payload: {
-  name: string;
-  description: string;
-  tags: string[];
-  region: string;
-  type: "online" | "offline";
-  duration: "short" | "long";
-  startDate: string; // YYYY-MM-DD
-  endDate?: string;
-  maxMembers: number;
-}) {
-  const data = await api.request<{ id: string }>("/studies", {
-    method: "POST",
-    token,
-    body: payload,
-  });
-  return data;
-}
-
-export async function submitAttendance(
-  token: string,
-  studyId: string,
-  code: string
-) {
-  const data = await api.request<{ ok: boolean; warning?: boolean }>(
-    `/studies/${studyId}/attendance`,
-    {
-      method: "POST",
-      token,
-      body: { code },
-    }
-  );
-  return data;
-}
-
-// (선택) 채팅
-export async function getMessages(token: string, studyId: string) {
-  const data = await api.request<
-    { id: string; userId: string; userNickname: string; text: string; timestamp: string }[]
-  >(`/studies/${studyId}/messages`, {
-    method: "GET",
-    token,
-  });
-
-  return data;
-}
-
-export async function sendMessage(
-  token: string,
-  studyId: string,
-  text: string
-) {
-  const data = await api.request<{ id: string }>(
-    `/studies/${studyId}/messages`,
-    {
-      method: "POST",
-      token,
-      body: { text },
-    }
-  );
-  return data;
+// 목록 API
+export async function fetchStudies() {
+  const rawList = await api.get<any[]>("/studies");
+  if (!Array.isArray(rawList)) return [];
+  return rawList.map(mapRowToStudy);
 }

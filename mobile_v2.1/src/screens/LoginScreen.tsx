@@ -1,3 +1,4 @@
+// src/screens/LoginScreen.tsx
 import React, { useMemo, useState } from "react";
 import {
   View,
@@ -21,8 +22,10 @@ import Input from "../components/Input";
 import theme from "../styles/theme";
 import { BookOpen, Users } from "lucide-react-native";
 import { signUp, login } from "../services/authService";
+import { useAuth } from "../context/AuthContext"; // ✅ 추가
 
 export default function LoginScreen({ route, navigation }: any) {
+  const { setUser } = useAuth(); // ✅ 로그인 성공 시 전역 저장
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -38,7 +41,7 @@ export default function LoginScreen({ route, navigation }: any) {
   // 입력 검증
   const canSubmit = useMemo(() => {
     const okEmail = /\S+@\S+\.\S+/.test(form.email);
-    const okPw = form.password.trim().length >= 4; // 최소 길이 룰은 원하는대로
+    const okPw = form.password.trim().length >= 4;
     if (isLogin) {
       return okEmail && okPw;
     } else {
@@ -54,9 +57,21 @@ export default function LoginScreen({ route, navigation }: any) {
       setLoading(true);
 
       if (isLogin) {
-        // 로그인 모드
+        // 로그인 요청
         const userData = await login(form.email, form.password);
-        // optional callback (옛 코드 호환)
+        // userData 예:
+        // { user_id, email, nickname, role, status }
+
+        // 전역 auth 상태 저장
+        setUser({
+          user_id: userData.user_id,
+          email: userData.email,
+          nickname: userData.nickname,
+          role: userData.role,
+          status: userData.status,
+        });
+
+        // (옛 코드 호환) route.params.onLogin() 호출 유지 가능
         const onLogin = route?.params?.onLogin;
         if (typeof onLogin === "function") {
           onLogin({
@@ -76,7 +91,7 @@ export default function LoginScreen({ route, navigation }: any) {
           },
         ]);
       } else {
-        // 회원가입 모드
+        // 회원가입 요청
         const newUser = await signUp(
           form.email.trim(),
           form.password.trim(),
@@ -90,7 +105,6 @@ export default function LoginScreen({ route, navigation }: any) {
             {
               text: "확인",
               onPress: () => {
-                // 가입 끝나면 로그인 화면으로 전환
                 setIsLogin(true);
               },
             },
@@ -114,7 +128,7 @@ export default function LoginScreen({ route, navigation }: any) {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={{ padding: 16 }}>
-          {/* Logo / Title */}
+          {/* 로고/타이틀 */}
           <View
             style={{
               alignItems: "center",
@@ -149,14 +163,12 @@ export default function LoginScreen({ route, navigation }: any) {
             </Text>
           </View>
 
-          {/* Card */}
+          {/* 카드 */}
           <Card style={{ elevation: 2 }}>
             <CardHeader style={{ alignItems: "center" }}>
               <CardTitle>{isLogin ? "로그인" : "회원가입"}</CardTitle>
               <CardDescription>
-                {isLogin
-                  ? "계정에 로그인하세요"
-                  : "새 계정을 만들어보세요"}
+                {isLogin ? "계정에 로그인하세요" : "새 계정을 만들어보세요"}
               </CardDescription>
             </CardHeader>
 
@@ -215,7 +227,6 @@ export default function LoginScreen({ route, navigation }: any) {
                   variant="link"
                   size="sm"
                   onPress={() => {
-                    // 모드 전환할 때 폼은 그대로 두고, 그냥 isLogin만 바꿔도 됨
                     setIsLogin((v) => !v);
                   }}
                 >
