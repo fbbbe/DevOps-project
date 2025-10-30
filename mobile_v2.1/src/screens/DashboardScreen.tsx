@@ -352,104 +352,93 @@ function StudyCard({
         study,
         user: { id: 'me', nickname: '나', role: 'user' }, // 필요 시 실제 유저로 교체
       })}
-      style={{ borderRadius: 12, overflow: 'hidden' }}
+      style={S.studyPressable}
     >
-      <Card style={{ marginTop: 12 }}>
-        <CardHeader style={{ paddingBottom: 12 }}>
-          <View style={{ flexDirection:'row', justifyContent:'space-between', gap:12 }}>
-            <View style={{ flex:1, minWidth:0 }}>
-              <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: 6 }}>
-                <CardTitle style={{ fontSize: 16 }} numberOfLines={1}>
-                  {study.name}
-                </CardTitle>
-
-                {/* 찜 아이콘 */}
-                <Pressable
-                  onPress={(e:any) => {
-                    if (typeof e?.stopPropagation === 'function') e.stopPropagation();
-                    onToggleFavorite();
-                  }}
-                  hitSlop={8}
-                  style={{ width:32, height:32, alignItems:'center', justifyContent:'center' }}
-                >
-                  <Heart
-                    size={20}
-                    color={isFavorite ? '#ef4444' : theme.color.mutedText}
-                    fill={isFavorite ? '#ef4444' : 'transparent'}
-                  />
-                </Pressable>
-              </View>
-
-              <CardDescription style={{ fontSize: 12 }}>
+      <Card style={S.studyCard}>
+        <CardHeader style={S.studyHeader}>
+          <View style={S.studyTop}>
+            <View style={S.studyTitleWrap}>
+              <CardTitle style={S.studyTitle} numberOfLines={1}>
+                {study.name}
+              </CardTitle>
+              <CardDescription style={S.studyOwner}>
                 {study.ownerNickname}
               </CardDescription>
-
-              <Text
-                style={{ fontSize:12, color: theme.color.mutedText, marginTop: 6 }}
-                numberOfLines={2}
-              >
-                {study.description}
-              </Text>
-
-              <View style={{ flexDirection:'row', flexWrap:'wrap', gap:4, marginTop: 8 }}>
-                {study.tags.slice(0,3).map(tag => (
-                  <Badge key={tag} variant="outline" style={{ paddingVertical: 2 }}>
-                    <Text style={{ fontSize: 12 }}>#{tag}</Text>
-                  </Badge>
-                ))}
-                {study.tags.length > 3 && (
-                  <Badge variant="outline" style={{ paddingVertical: 2 }}>
-                    <Text style={{ fontSize: 12 }}>+{study.tags.length-3}</Text>
-                  </Badge>
-                )}
-              </View>
             </View>
 
-            <View style={{ alignItems:'flex-end', justifyContent:'space-between' }}>
+            <View style={S.studyBadgeBlock}>
               {study.status==='recruiting' && <Badge variant="default">모집중</Badge>}
               {study.status==='active' && <Badge variant="secondary">진행중</Badge>}
               {study.status==='completed' && <Badge variant="outline">완료</Badge>}
-
-              <View style={{ flexDirection:'row', alignItems:'center', gap:4, marginTop: 6 }}>
-                <MapPin size={12} color={theme.color.mutedText} />
-                <Text
-                  style={{ fontSize: 12, color: theme.color.mutedText }}
-                  numberOfLines={1}
-                >
-                  {study.type==='online'
-                    ? '온라인'
-                    : (study.regionDetail?.dongEupMyeon ?? study.region)}
-                </Text>
-              </View>
-
-              <View style={{ flexDirection:'row', alignItems:'center', gap:4 }}>
-                <Users size={12} color={theme.color.mutedText} />
-                <Text style={{ fontSize: 12, color: theme.color.mutedText }}>
-                  {study.currentMembers}/{study.maxMembers}
-                </Text>
-              </View>
-
-              <View style={{ flexDirection:'row', alignItems:'center', gap:4 }}>
-                <Calendar size={12} color={theme.color.mutedText} />
-                <Text style={{ fontSize: 12, color: theme.color.mutedText }}>
-                  {study.startDate.slice(5)}
-                </Text>
-              </View>
             </View>
+
+            <Pressable
+              onPress={(e:any) => {
+                if (typeof e?.stopPropagation === 'function') e.stopPropagation();
+                onToggleFavorite();
+              }}
+              hitSlop={8}
+              style={S.favoriteButton}
+            >
+              <Heart
+                size={20}
+                color={isFavorite ? '#ef4444' : theme.color.mutedText}
+                fill={isFavorite ? '#ef4444' : 'transparent'}
+              />
+            </Pressable>
+          </View>
+
+          <Text
+            style={S.studyDescription}
+            numberOfLines={2}
+          >
+            {study.description}
+          </Text>
+
+          <View style={S.studyMetaRow}>
+            <View style={S.studyMetaItem}>
+              <MapPin size={12} color={theme.color.mutedText} />
+              <Text style={S.studyMetaText} numberOfLines={1}>
+                {study.type==='online'
+                  ? '온라인'
+                  : (study.regionDetail?.dongEupMyeon ?? study.region)}
+              </Text>
+            </View>
+
+            <View style={S.studyMetaItem}>
+              <Users size={12} color={theme.color.mutedText} />
+              <Text style={S.studyMetaText}>
+                {study.currentMembers}/{study.maxMembers}
+              </Text>
+            </View>
+
+            <View style={S.studyMetaItem}>
+              <Calendar size={12} color={theme.color.mutedText} />
+              <Text style={S.studyMetaText}>
+                {study.startDate.slice(5)}
+              </Text>
+            </View>
+          </View>
+
+          <View style={S.tagRow}>
+            {study.tags.slice(0,3).map(tag => (
+              <Badge key={tag} variant="outline" style={S.tagBadge}>
+                <Text style={S.tagText}>#{tag}</Text>
+              </Badge>
+            ))}
+            {study.tags.length > 3 && (
+              <Badge variant="outline" style={S.tagBadge}>
+                <Text style={S.tagText}>+{study.tags.length-3}</Text>
+              </Badge>
+            )}
           </View>
         </CardHeader>
 
         {showProgress && study.progress !== undefined && (
-          <CardContent
-            style={{
-              paddingTop: 12,
-              borderTopWidth: 1,
-              borderTopColor: theme.color.border
-            }}
-          >
-            <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom: 4 }}>
-              <Text style={{ fontSize: 12 }}>진행률</Text>
-              <Text style={{ fontSize: 12 }}>{study.progress}%</Text>
+          <CardContent style={S.studyProgressContent}>
+            <View style={S.studyProgressHeader}>
+              <Text style={S.studyProgressLabel}>진행률</Text>
+              <Text style={S.studyProgressLabel}>{study.progress}%</Text>
             </View>
             <ProgressBar value={study.progress} />
           </CardContent>
@@ -473,5 +462,90 @@ const S = StyleSheet.create({
   empty:{
     alignItems:'center',
     paddingVertical: 32
+  },
+  studyPressable: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  studyCard: {
+    marginTop: 12,
+  },
+  studyHeader: {
+    paddingBottom: 12,
+    gap: 12,
+  },
+  studyTop: {
+    flexDirection:'row',
+    alignItems:'center',
+    justifyContent:'space-between',
+    gap: 12,
+  },
+  studyTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  studyTitle: {
+    fontSize: 16,
+  },
+  studyOwner: {
+    fontSize: 12,
+  },
+  studyBadgeBlock: {
+    flexShrink: 0,
+    alignItems:'flex-end',
+  },
+  favoriteButton: {
+    width: 32,
+    height: 32,
+    alignItems:'center',
+    justifyContent:'center',
+    position:'absolute',
+    top: -4,
+    right: -4,
+  },
+  studyDescription: {
+    fontSize:12,
+    color: theme.color.mutedText,
+  },
+  studyMetaRow: {
+    flexDirection:'row',
+    alignItems:'center',
+    justifyContent:'space-between',
+    gap: 12,
+  },
+  studyMetaItem: {
+    flexDirection:'row',
+    alignItems:'center',
+    gap: 4,
+    flex: 1,
+  },
+  studyMetaText: {
+    fontSize: 12,
+    color: theme.color.mutedText,
+  },
+  tagRow: {
+    flexDirection:'row',
+    flexWrap:'wrap',
+    gap:4,
+  },
+  tagBadge: {
+    paddingVertical: 2,
+  },
+  tagText: {
+    fontSize: 12,
+  },
+  studyProgressContent: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.color.border,
+  },
+  studyProgressHeader: {
+    flexDirection:'row',
+    justifyContent:'space-between',
+    marginBottom: 4,
+  },
+  studyProgressLabel: {
+    fontSize: 12,
   },
 });
