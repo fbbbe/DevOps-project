@@ -245,7 +245,7 @@ export default function StudyDetailScreen({ route, navigation }: any) {
               <Button
               variant="outline"
                 onPress={() =>
-                  navigation?.navigate?.('출석', {
+                  navigation?.navigate?.('Attendance', {
                     study,
                     user: { id: 'me', nickname: '나', gender: '남성', role: 'user' },
                   })

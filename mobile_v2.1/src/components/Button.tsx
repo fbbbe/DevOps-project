@@ -106,6 +106,7 @@ const S = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    alignSelf: 'stretch',
   },
   textBase: {
     fontWeight: '600',
