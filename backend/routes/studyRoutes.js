@@ -1,4 +1,4 @@
-// backend/routes/studyRoutes.js
+﻿// backend/routes/studyRoutes.js
 
 import express from 'express';
 import {
@@ -10,6 +10,7 @@ import {
   cancelJoinRequestInDB,
   getJoinRequestsFromDB,
   updateJoinRequestStatusInDB,
+  getStudyChatsFromDB,
 } from '../services/studyService.js';
 
 const router = express.Router();
@@ -94,7 +95,9 @@ router.post('/studies', async (req, res) => {
   try {
     const userId = req.user?.id ?? req.body?.createdByUserId;
     if (!userId) {
-      return res.status(401).json({ error: '인증 토큰이 유효하지 않습니다.' });
+      return res
+        .status(401)
+        .json({ error: '\uC778\uC99D \uD1A0\uD070\uC774 \uC720\uD6A8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.' });
     }
 
     const result = await createStudyInDB({ ...req.body, createdByUserId: userId });
@@ -102,7 +105,9 @@ router.post('/studies', async (req, res) => {
     return res.status(201).json(normalized);
   } catch (err) {
     console.error('Create Study Error:', err);
-    return res.status(500).json({ error: err?.message || '스터디 생성 실패' });
+    return res
+      .status(500)
+      .json({ error: err?.message || '\uC2A4\uD130\uB514 \uC0DD\uC131\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.' });
   }
 });
 
@@ -113,7 +118,9 @@ router.get('/studies', async (_req, res) => {
     return res.json(await normalizeRows(studies));
   } catch (err) {
     console.error('Get Studies Error:', err);
-    return res.status(500).json({ error: err?.message || '스터디 목록 조회 실패' });
+    return res
+      .status(500)
+      .json({ error: err?.message || '\uC2A4\uD130\uB514 \uBAA9\uB85D \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.' });
   }
 });
 
@@ -121,14 +128,16 @@ router.get('/studies', async (_req, res) => {
 router.get('/studies/:studyId/members', async (req, res) => {
   const { studyId } = req.params;
   if (!studyId) {
-    return res.status(400).json({ error: 'studyId가 필요합니다.' });
+    return res.status(400).json({ error: 'studyId\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4.' });
   }
   try {
     const members = await getStudyMembersFromDB(studyId);
     return res.json(await normalizeRows(members));
   } catch (err) {
     console.error('Get Study Members Error:', err);
-    return res.status(500).json({ error: err?.message || '스터디 멤버 조회 실패' });
+    return res
+      .status(500)
+      .json({ error: err?.message || '\uC2A4\uD130\uB514 \uBA64\uBC84 \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.' });
   }
 });
 
@@ -137,14 +146,16 @@ router.get('/studies/:studyId/membership', async (req, res) => {
   const { studyId } = req.params;
   const userId = req.user?.id;
   if (!studyId) {
-    return res.status(400).json({ error: 'studyId가 필요합니다.' });
+    return res.status(400).json({ error: 'studyId\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4.' });
   }
   try {
     const status = await getMembershipStatusFromDB(studyId, userId);
     return res.json(status);
   } catch (err) {
     console.error('Get Membership Status Error:', err);
-    return res.status(500).json({ error: err?.message || '멤버십 상태 조회 실패' });
+    return res
+      .status(500)
+      .json({ error: err?.message || '\uBA64\uBC84 \uC0C1\uD0DC \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.' });
   }
 });
 
@@ -154,14 +165,16 @@ router.post('/studies/:studyId/join-requests', async (req, res) => {
   const userId = req.user?.id;
   const { message } = req.body ?? {};
   if (!userId) {
-    return res.status(401).json({ error: '로그인이 필요합니다.' });
+    return res.status(401).json({ error: '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.' });
   }
   try {
     const result = await createJoinRequestInDB({ studyId, userId, message });
     return res.json(result);
   } catch (err) {
     console.error('Create Join Request Error:', err);
-    return res.status(500).json({ error: err?.message || '참여 신청에 실패했습니다.' });
+    return res
+      .status(500)
+      .json({ error: err?.message || '\uCC38\uC5EC \uC694\uCCAD\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.' });
   }
 });
 
@@ -170,14 +183,16 @@ router.delete('/studies/:studyId/join-requests', async (req, res) => {
   const { studyId } = req.params;
   const userId = req.user?.id;
   if (!userId) {
-    return res.status(401).json({ error: '로그인이 필요합니다.' });
+    return res.status(401).json({ error: '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.' });
   }
   try {
     const result = await cancelJoinRequestInDB({ studyId, userId });
     return res.json(result);
   } catch (err) {
     console.error('Cancel Join Request Error:', err);
-    return res.status(500).json({ error: err?.message || '참여 요청 취소에 실패했습니다.' });
+    return res
+      .status(500)
+      .json({ error: err?.message || '\uCC38\uC5EC \uC694\uCCAD \uCDE8\uC18C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.' });
   }
 });
 
@@ -185,18 +200,20 @@ router.delete('/studies/:studyId/join-requests', async (req, res) => {
 router.get('/studies/:studyId/join-requests', async (req, res) => {
   const { studyId } = req.params;
   if (!req.user?.id) {
-    return res.status(401).json({ error: '로그인이 필요합니다.' });
+    return res.status(401).json({ error: '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.' });
   }
   try {
     const membership = await getMembershipStatusFromDB(studyId, req.user.id);
     if (membership.status !== 'owner') {
-      return res.status(403).json({ error: '방장만 접근할 수 있습니다.' });
+      return res.status(403).json({ error: '\uBC29\uC7A5\uB9CC \uC811\uADFC\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.' });
     }
     const requests = await getJoinRequestsFromDB(studyId);
     return res.json(await normalizeRows(requests));
   } catch (err) {
     console.error('Get Join Requests Error:', err);
-    return res.status(500).json({ error: err?.message || '참여 요청 조회 실패' });
+    return res
+      .status(500)
+      .json({ error: err?.message || '\uCC38\uC5EC \uC694\uCCAD \uC870\uD68C\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.' });
   }
 });
 
@@ -205,10 +222,10 @@ router.patch('/join-requests/:requestId', async (req, res) => {
   const { requestId } = req.params;
   const { decision } = req.body ?? {};
   if (!req.user?.id) {
-    return res.status(401).json({ error: '로그인이 필요합니다.' });
+    return res.status(401).json({ error: '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.' });
   }
   if (!['approve', 'reject'].includes(decision)) {
-    return res.status(400).json({ error: 'decision 값이 올바르지 않습니다.' });
+    return res.status(400).json({ error: 'decision \uAC12\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.' });
   }
   try {
     const result = await updateJoinRequestStatusInDB({
@@ -217,15 +234,32 @@ router.patch('/join-requests/:requestId', async (req, res) => {
       decidedBy: req.user.id,
     });
     if (result?.error === 'not_found') {
-      return res.status(404).json({ error: '요청을 찾을 수 없습니다.' });
+      return res.status(404).json({ error: '\uC694\uCCAD\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.' });
     }
     if (result?.error === 'already_processed') {
-      return res.status(409).json({ error: '이미 처리된 요청입니다.' });
+      return res.status(409).json({ error: '\uC774\uBBF8 \uCC98\uB9AC\uB41C \uC694\uCCAD\uC785\uB2C8\uB2E4.' });
     }
     return res.json(result);
   } catch (err) {
     console.error('Update Join Request Error:', err);
-    return res.status(500).json({ error: err?.message || '참여 요청 처리 실패' });
+    return res
+      .status(500)
+      .json({ error: err?.message || '\uCC38\uC5EC \uC694\uCCAD \uCC98\uB9AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.' });
+  }
+});
+
+router.get('/studies/me/chats', async (req, res) => {
+  if (!req.user?.id) {
+    return res.status(401).json({ error: '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.' });
+  }
+  try {
+    const chats = await getStudyChatsFromDB(req.user.id);
+    return res.json(await normalizeRows(chats));
+  } catch (err) {
+    console.error('Get Study Chats Error:', err);
+    return res
+      .status(500)
+      .json({ error: err?.message || '\uCC44\uD305 \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.' });
   }
 });
 

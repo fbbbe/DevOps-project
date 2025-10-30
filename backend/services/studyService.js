@@ -519,3 +519,64 @@ export async function updateJoinRequestStatusInDB({ requestId, decision, decided
     await closeQuietly(connection);
   }
 }
+export async function getStudyChatsFromDB(userId) {
+  if (!userId) throw new Error("userId is required");
+  const connection = await getConn();
+  try {
+    let messagesJoin = "";
+    let lastActivityExpr = "s.START_DATE";
+    let orderByExpr = "s.START_DATE DESC";
+
+    try {
+      const messageColumns = await loadColumns(connection, "STUDY_MESSAGES");
+      const hasRequiredColumns =
+        messageColumns &&
+        messageColumns.size > 0 &&
+        hasColumn(messageColumns, "STUDY_ID") &&
+        hasColumn(messageColumns, "CREATED_AT");
+
+      if (hasRequiredColumns) {
+        messagesJoin = `
+      LEFT JOIN (
+        SELECT STUDY_ID, MAX(CREATED_AT) AS LAST_MESSAGE_AT
+        FROM STUDY_MESSAGES
+        GROUP BY STUDY_ID
+      ) lm ON lm.STUDY_ID = s.STUDY_ID`;
+        lastActivityExpr = "NVL(lm.LAST_MESSAGE_AT, s.START_DATE)";
+        orderByExpr = `${lastActivityExpr} DESC`;
+      }
+    } catch (err) {
+      console.warn("STUDY_MESSAGES table not available, falling back to START_DATE.", err?.message ?? err);
+    }
+
+    const result = await connection.execute(
+      `
+      SELECT
+        s.STUDY_ID,
+        s.NAME,
+        s.DESCRIPTION,
+        NVL(m.MEMBER_COUNT, 0) AS MEMBER_COUNT,
+        ${lastActivityExpr} AS LAST_MESSAGE_AT,
+        s.STATUS,
+        s.TERM_TYPE,
+        s.START_DATE,
+        s.END_DATE
+      FROM STUDIES s
+      JOIN STUDY_MEMBERS sm ON sm.STUDY_ID = s.STUDY_ID
+      LEFT JOIN (
+        SELECT STUDY_ID, COUNT(*) AS MEMBER_COUNT
+        FROM STUDY_MEMBERS
+        GROUP BY STUDY_ID
+      ) m ON m.STUDY_ID = s.STUDY_ID
+      ${messagesJoin}
+      WHERE sm.USER_ID = :userId
+      ORDER BY ${orderByExpr}
+      `,
+      { userId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    return result.rows || [];
+  } finally {
+    await closeQuietly(connection);
+  }
+}

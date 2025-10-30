@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import studyRoutes from "./routes/studyRoutes.js";
 import topicRoutes from "./routes/topicRoutes.js";
+import { attachUserFromToken } from "./middleware/authMiddleware.js";
 import { getConnection } from "./db/oracle.js"; // ✅ DB 헬스체크에 사용
 
 dotenv.config();
@@ -13,6 +14,7 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(attachUserFromToken);
 
 // 기본 헬스체크
 app.get("/api/health", (_req, res) => {

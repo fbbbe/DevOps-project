@@ -122,3 +122,4 @@ const postURLEncoded = <T = any>(path: string, params: URLSearchParams | Record<
   request<T>(path, { ...(opts ?? {}), method: "POST", body: params instanceof URLSearchParams ? params : new URLSearchParams(params as any) });
 
 export default { request, get, postJSON, postFormData, postURLEncoded };
+export const API_BASE_URL = BASE_URL;
