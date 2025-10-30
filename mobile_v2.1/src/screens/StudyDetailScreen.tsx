@@ -16,16 +16,19 @@ import Badge from '../components/Badge';
 import ProgressBar from '../components/ProgressBar';
 import {
   ArrowLeft, MapPin, Users, Calendar, Clock, Tag, QrCode,
-  BarChart3, Settings, MessageCircle, BookOpen, AlertTriangle, UserX
+  BarChart3, Settings, MessageCircle, BookOpen, AlertTriangle, UserX, Check, X
 } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
 import {
   MembershipStatus,
   cancelStudyJoinRequest,
+  decideJoinRequest,
+  fetchJoinRequests,
   fetchMembershipStatus,
   fetchStudyMembers,
   requestStudyJoin,
   StudyMember,
+  StudyJoinRequest,
 } from '../services/studyServices';
 
 // ---- 웹 타입과 맞춘 기본 타입 (필요시 공용 타입으로 분리해도 OK)
@@ -76,10 +79,14 @@ export default function StudyDetailScreen({ route, navigation }: any) {
   const [joinStatus, setJoinStatus] = useState<'none' | 'pending' | 'approved'>(initialIsMember ? 'approved' : 'none');
   const [joinRequestId, setJoinRequestId] = useState<string | null>(null);
   const [joinRequestLoading, setJoinRequestLoading] = useState<boolean>(false);
-  const [tab, setTab] = useState<'members' | 'sessions'>('members');
+  const [tab, setTab] = useState<'members' | 'sessions' | 'requests'>('members');
   const [members, setMembers] = useState<StudyMember[]>([]);
   const [membersLoading, setMembersLoading] = useState<boolean>(true);
   const [membersError, setMembersError] = useState<string | null>(null);
+  const [joinRequests, setJoinRequests] = useState<StudyJoinRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState<boolean>(false);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
 
   const buildMembersList = useCallback(
     (base: StudyMember[], includeSelfOverride?: boolean): StudyMember[] => {
@@ -152,6 +159,10 @@ export default function StudyDetailScreen({ route, navigation }: any) {
     { id: '3', date: '2024-01-29', topic: '3주차: 문장 구조', attendance: 4, total: 4, progress: 100 },
     { id: '4', date: '2024-02-05', topic: '4주차: 관계사', attendance: 3, total: 4, progress: 75 },
   ]), []);
+  const pendingRequestsCount = useMemo(
+    () => joinRequests.filter((req) => req.status === 'pending').length,
+    [joinRequests]
+  );
 
   const syncMembershipFlags = useCallback(
     (status: MembershipStatus, requestId?: string | null) => {
@@ -182,6 +193,26 @@ export default function StudyDetailScreen({ route, navigation }: any) {
       console.warn('[StudyDetail] fetch membership failed', err);
     }
   }, [study?.id, authToken, syncMembershipFlags]);
+
+  const refreshJoinRequests = useCallback(async () => {
+    if (!isOwner || !study?.id) {
+      setJoinRequests([]);
+      setRequestsLoading(false);
+      setRequestsError(null);
+      return;
+    }
+    setRequestsLoading(true);
+    setRequestsError(null);
+    try {
+      const list = await fetchJoinRequests(study.id, authToken ?? undefined);
+      setJoinRequests(list);
+    } catch (err) {
+      console.warn('[StudyDetail] fetch join requests failed', err);
+      setRequestsError('참여 요청을 불러오지 못했습니다.');
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, [isOwner, study?.id, authToken]);
 
   useEffect(() => {
     refreshMembership();
@@ -215,6 +246,14 @@ export default function StudyDetailScreen({ route, navigation }: any) {
     };
   }, [study.id, authToken, buildMembersList]);
 
+  useEffect(() => {
+    if (isOwner) {
+      refreshJoinRequests();
+    } else {
+      setJoinRequests([]);
+    }
+  }, [isOwner, refreshJoinRequests]);
+
   if (!study) {
     return (
       <Screen>
@@ -244,6 +283,21 @@ export default function StudyDetailScreen({ route, navigation }: any) {
       }
     }
     return <Badge variant="secondary">정상</Badge>;
+  };
+
+  const getRequestStatusBadge = (status: StudyJoinRequest['status']) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline">승인 대기</Badge>;
+      case 'approved':
+        return <Badge variant="secondary">승인됨</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive">거절됨</Badge>;
+      case 'cancelled':
+        return <Badge variant="outline">취소됨</Badge>;
+      default:
+        return null;
+    }
   };
 
   const handleJoinRequest = async () => {
@@ -323,6 +377,28 @@ export default function StudyDetailScreen({ route, navigation }: any) {
         },
       },
     ]);
+  };
+
+  const handleDecideRequest = async (request: StudyJoinRequest, decision: 'approve' | 'reject') => {
+    if (processingRequestId) return;
+    setProcessingRequestId(request.requestId);
+    try {
+      await decideJoinRequest(request.requestId, decision, authToken ?? undefined);
+      await refreshJoinRequests();
+      if (decision === 'approve') {
+        try {
+          const latest = await fetchStudyMembers(study.id, authToken ?? undefined);
+          setMembers(buildMembersList(latest));
+        } catch (memberErr) {
+          console.warn('[StudyDetail] refresh members after approval failed', memberErr);
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '요청 처리 중 오류가 발생했습니다.';
+      Alert.alert('처리 실패', message);
+    } finally {
+      setProcessingRequestId(null);
+    }
   };
 
   const handleLeaveStudy = () => {
@@ -526,6 +602,13 @@ export default function StudyDetailScreen({ route, navigation }: any) {
             <Pressable onPress={()=>setTab('sessions')} style={[S.tabBtn, tab==='sessions' && S.tabActive]}>
               <Text style={[S.tabTxt, tab==='sessions' && S.tabTxtActive]}>회차 ({mockSessions.length})</Text>
             </Pressable>
+            {isOwner && (
+              <Pressable onPress={()=>{ setTab('requests'); if (!requestsLoading) refreshJoinRequests(); }} style={[S.tabBtn, tab==='requests' && S.tabActive]}>
+                <Text style={[S.tabTxt, tab==='requests' && S.tabTxtActive]}>
+                  참여 요청 ({requestsLoading ? '...' : pendingRequestsCount})
+                </Text>
+              </Pressable>
+            )}
           </View>
 
           {tab==='members' && (
@@ -599,6 +682,106 @@ export default function StudyDetailScreen({ route, navigation }: any) {
                   </CardContent>
                 </Card>
               ))}
+            </View>
+          )}
+
+          {tab==='requests' && isOwner && (
+            <View style={{ gap: 12, marginTop: 12 }}>
+              {requestsLoading && (
+                <View style={{ paddingVertical: 32, alignItems: 'center', justifyContent: 'center' }}>
+                  <ActivityIndicator size="small" color={theme.color.primary} />
+                  <Text style={{ marginTop: 8, color: theme.color.mutedText }}>참여 요청을 불러오는 중...</Text>
+                </View>
+              )}
+
+              {!requestsLoading && requestsError && (
+                <Card>
+                  <CardContent style={{ padding: 16 }}>
+                    <Text style={{ color: theme.color.destructive }}>{requestsError}</Text>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      style={{ marginTop: 12 }}
+                      onPress={refreshJoinRequests}
+                    >
+                      다시 시도
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!requestsLoading && !requestsError && joinRequests.length === 0 && (
+                <Card>
+                  <CardContent style={{ padding: 16 }}>
+                    <Text style={{ color: theme.color.mutedText }}>새로운 참여 요청이 없습니다.</Text>
+                  </CardContent>
+                </Card>
+              )}
+
+              {!requestsLoading && !requestsError && joinRequests.map((request) => {
+                const isProcessing = processingRequestId === request.requestId;
+                const requestedAtText = (() => {
+                  if (!request.requestedAt) return null;
+                  const parsed = new Date(request.requestedAt);
+                  return Number.isNaN(parsed.getTime()) ? request.requestedAt : parsed.toLocaleString();
+                })();
+
+                return (
+                  <Card key={request.requestId}>
+                    <CardContent style={{ padding: 14 }}>
+                      <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center' }}>
+                        <View style={{ flex:1, paddingRight: 12 }}>
+                          <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                            <Text style={{ fontWeight:'600', fontSize:15 }}>{request.nickname}</Text>
+                            {getRequestStatusBadge(request.status)}
+                          </View>
+                          {request.message && (
+                            <Text style={{ marginTop: 6, fontSize: 13, color: theme.color.mutedText }}>
+                              {request.message}
+                            </Text>
+                          )}
+                          {requestedAtText && (
+                            <Text style={{ marginTop: 6, fontSize: 12, color: theme.color.mutedText }}>
+                              신청일: {requestedAtText}
+                            </Text>
+                          )}
+                        </View>
+
+                        <View style={{ flexDirection:'row', gap:8 }}>
+                          {request.status === 'pending' ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onPress={() => handleDecideRequest(request, 'reject')}
+                                disabled={isProcessing}
+                                style={{ flexDirection:'row', alignItems:'center', gap:4 }}
+                              >
+                                <X size={14} color={theme.color.text} />
+                                {isProcessing ? '처리중...' : '거절'}
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onPress={() => handleDecideRequest(request, 'approve')}
+                                disabled={isProcessing}
+                                style={{ flexDirection:'row', alignItems:'center', gap:4 }}
+                              >
+                                <Check size={14} color={theme.color.onPrimary} />
+                                {isProcessing ? '처리중...' : '승인'}
+                              </Button>
+                            </>
+                          ) : (
+                            <Button variant="outline" size="sm" disabled>
+                              처리 완료
+                            </Button>
+                          )}
+                        </View>
+                      </View>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </View>
           )}
 
