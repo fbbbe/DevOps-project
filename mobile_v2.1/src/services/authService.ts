@@ -1,4 +1,4 @@
-// src/services/authService.ts
+﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BASE_URL = "http://192.168.0.34:8181"; // Adjust to match backend host if needed.
 
@@ -101,6 +101,28 @@ export async function login(email: string, password: string): Promise<AuthRespon
 
   if (!res.ok) {
     throw new Error(data.error || "로그인에 실패했습니다.");
+  }
+
+  return normalizeAuthResponse(data);
+}
+
+export async function updateNickname(nickname: string): Promise<AuthResponse> {
+  const token = await AsyncStorage.getItem("userToken");
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${BASE_URL}/api/profile/nickname`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ nickname }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.error || "닉네임을 수정할 수 없습니다.");
   }
 
   return normalizeAuthResponse(data);
