@@ -70,7 +70,6 @@ function mapTopicsToOptions(rows: any[]): SubjectOption[] {
  * - 실패 시 [] 반환
  */
 export async function fetchTopicOptions(): Promise<SubjectOption[]> {
-<<<<<<< HEAD
   const res = await api.get<any>("/api/topics/options");
 
   if (Array.isArray(res)) {
@@ -93,12 +92,5 @@ export async function fetchTopics(): Promise<Topic[]> {
   if (Array.isArray(res)) return res.map(mapRowToTopic);
   const data = (res && (res.data ?? res.rows)) ?? res;
   return Array.isArray(data) ? data.map(mapRowToTopic) : [];
-=======
-  return await api.get('/api/topics/options');
-}
-
-export async function fetchTopics(): Promise<TopicRow[]> {
-  return await api.get('/api/topics');
->>>>>>> e6be2c43f7286643cee4b559a9b6ed440fc5d454
 }
 

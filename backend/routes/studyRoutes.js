@@ -250,16 +250,44 @@ router.patch('/join-requests/:requestId', async (req, res) => {
 
 router.get('/studies/me/chats', async (req, res) => {
   if (!req.user?.id) {
-    return res.status(401).json({ error: '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.' });
+    return res.status(401).json({ error: '로그인이 필요합니다.' });
   }
   try {
     const chats = await getStudyChatsFromDB(req.user.id);
-    return res.json(await normalizeRows(chats));
+    const normalized = await normalizeRows(chats);
+    const mapped = normalized.map((row) => {
+      const studyId =
+        row.STUDY_ID ?? row.study_id ?? row.studyId ?? row.id ?? null;
+      const name = row.NAME ?? row.name ?? row.TITLE ?? row.title ?? '';
+      const description =
+        row.DESCRIPTION ?? row.description ?? row.BODY ?? row.body ?? '';
+      const memberCount =
+        Number(row.MEMBER_COUNT ?? row.memberCount ?? row.members ?? 0) || 0;
+      const lastMessageAt =
+        row.LAST_MESSAGE_AT ?? row.lastMessageAt ?? row.last_activity ?? null;
+      const status = row.STATUS ?? row.status ?? null;
+      const termType = row.TERM_TYPE ?? row.termType ?? null;
+      const startDate = row.START_DATE ?? row.startDate ?? null;
+      const endDate = row.END_DATE ?? row.endDate ?? null;
+
+      return {
+        studyId,
+        name,
+        description,
+        memberCount,
+        lastMessageAt,
+        status,
+        termType,
+        startDate,
+        endDate,
+      };
+    });
+    return res.json(mapped);
   } catch (err) {
     console.error('Get Study Chats Error:', err);
     return res
       .status(500)
-      .json({ error: err?.message || '\uCC44\uD305 \uBAA9\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.' });
+      .json({ error: err?.message || '채팅 목록을 불러오지 못했습니다.' });
   }
 });
 
