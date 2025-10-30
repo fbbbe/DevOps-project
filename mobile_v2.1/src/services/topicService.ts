@@ -8,9 +8,9 @@ export type TopicRow = {
 };
 
 export async function fetchTopicOptions(): Promise<SubjectOption[]> {
-  return await api.get('/topics/options');
+  return await api.get('/api/topics/options');
 }
 
 export async function fetchTopics(): Promise<TopicRow[]> {
-  return await api.get('/topics');
+  return await api.get('/api/topics');
 }

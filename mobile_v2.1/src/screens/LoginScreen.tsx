@@ -90,7 +90,7 @@ export default function LoginScreen({ route, navigation }: LoginScreenProps) {
           await AsyncStorage.removeItem("userToken");
         }
 
-        setUser(user);
+        setUser({ ...user, token });
 
         const onLogin = route?.params?.onLogin;
         if (typeof onLogin === "function") {
@@ -119,7 +119,7 @@ export default function LoginScreen({ route, navigation }: LoginScreenProps) {
           await AsyncStorage.removeItem("userToken");
         }
 
-        setUser(user);
+        setUser({ ...user, token });
 
         Alert.alert("가입 완료", `${user.nickname}님, 자동으로 로그인되었습니다.`, [
           {

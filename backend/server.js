@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import authRoutes from "./routes/authRoutes.js";
 import studyRoutes from "./routes/studyRoutes.js";
 import topicRoutes from "./routes/topicRoutes.js";
+import { attachUserFromToken } from "./middleware/authMiddleware.js";
 import { getConnection } from "./db/oracle.js"; // ✅ DB 헬스체크에 사용
 
 dotenv.config();
@@ -33,8 +34,9 @@ app.get("/api/health/db", async (_req, res) => {
 });
 
 // 실제 API
-app.use("/api", authRoutes);     // /api/signup, /api/login
-app.use("/api", studyRoutes);    // /api/studies
+app.use("/api", attachUserFromToken);
+app.use("/api", authRoutes);         // /api/signup, /api/login
+app.use("/api", studyRoutes);        // /api/studies
 app.use("/api/topics", topicRoutes); // /api/topics, /api/topics/options
 
 const PORT = process.env.PORT || 8181;
