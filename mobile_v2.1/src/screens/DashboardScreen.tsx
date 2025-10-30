@@ -366,26 +366,26 @@ function StudyCard({
               </CardDescription>
             </View>
 
-            <View style={S.studyBadgeBlock}>
+            <View style={S.studyActions}>
+              <Pressable
+                onPress={(e:any) => {
+                  if (typeof e?.stopPropagation === 'function') e.stopPropagation();
+                  onToggleFavorite();
+                }}
+                hitSlop={8}
+                style={S.favoriteButton}
+              >
+                <Heart
+                  size={20}
+                  color={isFavorite ? '#ef4444' : theme.color.mutedText}
+                  fill={isFavorite ? '#ef4444' : 'transparent'}
+                />
+              </Pressable>
+
               {study.status==='recruiting' && <Badge variant="default">모집중</Badge>}
               {study.status==='active' && <Badge variant="secondary">진행중</Badge>}
               {study.status==='completed' && <Badge variant="outline">완료</Badge>}
             </View>
-
-            <Pressable
-              onPress={(e:any) => {
-                if (typeof e?.stopPropagation === 'function') e.stopPropagation();
-                onToggleFavorite();
-              }}
-              hitSlop={8}
-              style={S.favoriteButton}
-            >
-              <Heart
-                size={20}
-                color={isFavorite ? '#ef4444' : theme.color.mutedText}
-                fill={isFavorite ? '#ef4444' : 'transparent'}
-              />
-            </Pressable>
           </View>
 
           <Text
@@ -476,7 +476,7 @@ const S = StyleSheet.create({
   },
   studyTop: {
     flexDirection:'row',
-    alignItems:'center',
+    alignItems:'flex-start',
     justifyContent:'space-between',
     gap: 12,
   },
@@ -491,18 +491,19 @@ const S = StyleSheet.create({
   studyOwner: {
     fontSize: 12,
   },
-  studyBadgeBlock: {
-    flexShrink: 0,
-    alignItems:'flex-end',
+  studyActions: {
+    flexDirection:'row',
+    alignItems:'center',
+    gap: 8,
+    paddingTop: 2,
   },
   favoriteButton: {
-    width: 32,
-    height: 32,
+    paddingVertical: 2,
+    paddingHorizontal: 2,
     alignItems:'center',
     justifyContent:'center',
-    position:'absolute',
-    top: -4,
-    right: -4,
+    alignSelf:'flex-start',
+    marginTop: -2,
   },
   studyDescription: {
     fontSize:12,
