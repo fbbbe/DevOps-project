@@ -170,7 +170,8 @@ function mapRowToStudy(row: any): Study {
     row.tagList ??
     row.TAG_LIST ??
     row.tagsJson ??
-    row.TAGS_JSON
+    row.TAGS_JSON ??
+    row.TAG_NAMES
   );
 
   // 주제명: 없으면 '기타'
@@ -245,3 +246,4 @@ export async function getStudyDetail(studyId: string) {
   const data = await api.request<any>(`/api/studies/${studyId}`, { method: "GET" });
   return mapRowToStudy(data);
 }
+
