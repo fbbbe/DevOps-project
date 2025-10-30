@@ -386,9 +386,6 @@ function StudyCard({
               <CardTitle style={S.studyTitle} numberOfLines={1}>
                 {study.name}
               </CardTitle>
-              <CardDescription style={S.studyOwner}>
-                {study.ownerNickname}
-              </CardDescription>
             </View>
 
             <View style={S.studyActions}>

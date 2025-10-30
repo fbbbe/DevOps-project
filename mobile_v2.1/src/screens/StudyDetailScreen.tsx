@@ -149,15 +149,7 @@ export default function StudyDetailScreen({ route, navigation }: any) {
             <View style={{ flexDirection:'row', justifyContent:'space-between' }}>
               <View style={{ flex:1, paddingRight: 12 }}>
                 <CardTitle style={{ fontSize: 18, marginBottom: 8 }}>{study.name}</CardTitle>
-                <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom: 8 }}>
-                  {/* AvatarFallback */}
-                  <View style={{ width:24, height:24, borderRadius:12, backgroundColor: theme.color.secondary, alignItems:'center', justifyContent:'center' }}>
-                    <Text style={{ fontSize:12, color: theme.color.onSecondary, fontWeight:'600' }}>
-                      {study.ownerNickname.charAt(0)}
-                    </Text>
-                  </View>
-                  <Text style={{ fontSize: 12, color: theme.color.mutedText }}>{study.ownerNickname}</Text>
-                </View>
+                <View style={{ marginBottom: 8 }} />
               </View>
               {getStatusBadge(study.status)}
             </View>
