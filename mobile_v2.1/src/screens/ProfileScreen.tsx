@@ -418,18 +418,15 @@ export default function ProfileScreen() {
                       <CardHeader>
                         <CardTitle>{study.name}</CardTitle>
                         <CardDescription>{study.subject || "기타"}</CardDescription>
-                      </CardHeader>
-                      <CardContent style={{ gap: 10 }}>
-                        <View style={styles.historyHeader}>
-                          <View style={styles.badgeRow}>
-                            <Badge variant="outline">멤버</Badge>
-                            <Badge variant="secondary">{STATUS_LABEL[study.status]}</Badge>
+                        </CardHeader>
+                        <CardContent style={{ gap: 10 }}>
+                          <View style={styles.historyHeader}>
+                            <View style={styles.badgeRow}>
+                              <Badge variant="outline">멤버</Badge>
+                              <Badge variant="secondary">{STATUS_LABEL[study.status]}</Badge>
+                            </View>
                           </View>
-                          <Text style={styles.metaText}>
-                            인원 {study.currentMembers}/{study.maxMembers}
-                          </Text>
-                        </View>
-                        <View>
+                          <View>
                           <Text style={styles.metaText}>진행률 {study.progress ?? 0}%</Text>
                           <ProgressBar value={study.progress ?? 0} />
                         </View>
