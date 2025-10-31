@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -467,37 +467,17 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        <Card style={{ marginTop: 24 }}>
-          <CardHeader>
-            <CardTitle>빠른 메뉴</CardTitle>
-            <CardDescription>알림 설정이나 문의를 빠르게 확인하세요.</CardDescription>
-          </CardHeader>
+        
           <CardContent style={{ gap: 12 }}>
-            <View style={styles.quickRow}>
-              <Pressable style={styles.quickButton} onPress={() => setNotifOpen(true)}>
-                <Bell size={18} color={theme.color.primary} />
-                <Text style={styles.quickLabel}>알림 설정</Text>
-              </Pressable>
-              <Pressable style={styles.quickButton} onPress={() => setPrivacyOpen(true)}>
-                <Lock size={18} color={theme.color.primary} />
-                <Text style={styles.quickLabel}>개인 정보</Text>
-              </Pressable>
-              <Pressable style={styles.quickButton} onPress={() => setContactOpen(true)}>
-                <MessageCircle size={18} color={theme.color.primary} />
-                <Text style={styles.quickLabel}>문의</Text>
-              </Pressable>
-            </View>
             <Button
               variant="outline"
-              leftIcon={<LogOut size={16} color={theme.color.destructive ?? "#B00020"} />}
               onPress={handleLogout}
               style={{ borderColor: theme.color.destructive ?? "#B00020" }}
-              textStyle={{ color: theme.color.destructive ?? "#B00020" }}
             >
               로그아웃
             </Button>
           </CardContent>
-        </Card>
+        
       </ScrollView>
 
       <Modal visible={notifOpen} animationType="slide" transparent>
@@ -652,7 +632,9 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: "center",
+    justifyContent: "center",
     gap: 16,
+    paddingVertical: 32,
   },
   avatar: {
     width: 72,
