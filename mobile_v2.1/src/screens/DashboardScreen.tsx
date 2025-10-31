@@ -116,9 +116,15 @@ export default function DashboardScreen() {
 
   // "내 스터디" 탭 데이터
   // 아직 실제 사용자 정보 연결 전이므로 기존 코드의 무작위 필터 방식 유지
+  const sortStudies = (list: Study[]) =>
+    [...list].sort((a, b) =>
+      a.name.localeCompare(b.name) || (a.startDate || '').localeCompare(b.startDate || '')
+    );
+
   const myStudies = useMemo(() => {
-    return studies.filter(() => Math.random() > 0.5);
-  }, [studies]);
+    const mine = studies.filter(s => String(s.ownerId) === String(currentUser.id));
+    return sortStudies(mine);
+  }, [studies, currentUser.id]);
 
   // 검색/필터 적용된 스터디 목록
   const filteredStudies = useMemo(() => {
@@ -148,7 +154,7 @@ export default function DashboardScreen() {
       filtered = filtered.filter(study => study.subject === selectedSubject);
     }
 
-    return filtered;
+    return sortStudies(filtered);
   }, [studies, searchQuery, selectedSido, selectedSigungu, selectedSubject]);
 
   // 시/도 선택 시 시/군/구 옵션 업데이트 (기존 로직 유지)

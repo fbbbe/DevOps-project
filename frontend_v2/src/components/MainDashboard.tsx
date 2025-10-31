@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -39,6 +39,7 @@ const KOREA_REGIONS = {
 };
 
 // Mock data
+/*
 const mockStudies: Study[] = [
   {
     id: '1',
@@ -104,17 +105,22 @@ const mockStudies: Study[] = [
     status: 'active'
   }
 ];
+*/
 
-const myStudies = mockStudies.filter(study => Math.random() > 0.5);
+// 정렬 함수: 이름 오름차순, 같으면 시작일 오름차순
+const sortStudies = (list: Study[]) =>
+  [...list].sort((a, b) =>
+    a.name.localeCompare(b.name) || (a.startDate || '').localeCompare(b.startDate || '')
+  );
 
 export function MainDashboard({ user, onViewChange, onLogout, favoriteStudyIds, onToggleFavorite }: MainDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSido, setSelectedSido] = useState<string>('all');
   const [selectedSigungu, setSelectedSigungu] = useState<string>('all');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
-  const [filteredStudies, setFilteredStudies] = useState(mockStudies);
+  const [filteredStudies, setFilteredStudies] = useState(sortStudies(mockStudies));
   const [availableSigungu, setAvailableSigungu] = useState<string[]>([]);
-
+  
   const handleSidoChange = (sido: string) => {
     setSelectedSido(sido);
     setSelectedSigungu('all');
@@ -156,7 +162,7 @@ export function MainDashboard({ user, onViewChange, onLogout, favoriteStudyIds, 
       filtered = filtered.filter(study => study.subject === selectedSubject);
     }
 
-    setFilteredStudies(filtered);
+    setFilteredStudies(sortStudies(filtered));
   };
 
   React.useEffect(() => {
@@ -287,7 +293,7 @@ export function MainDashboard({ user, onViewChange, onLogout, favoriteStudyIds, 
           </TabsContent>
           
           <TabsContent value="my" className="space-y-4">
-            {myStudies.map((study) => (
+            {useMemo(() => sortStudies(filteredStudies.filter(s => String(s.ownerId) === String(user.id))), [filteredStudies, user.id]).map((study) => (
               <StudyCard 
                 key={study.id} 
                 study={study} 
@@ -297,7 +303,7 @@ export function MainDashboard({ user, onViewChange, onLogout, favoriteStudyIds, 
                 onToggleFavorite={() => onToggleFavorite(study.id)}
               />
             ))}
-            {myStudies.length === 0 && (
+            {useMemo(() => filteredStudies.filter(s => String(s.ownerId) === String(user.id)).length, [filteredStudies, user.id]) === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>참여 중인 스터디가 없습니다.</p>
