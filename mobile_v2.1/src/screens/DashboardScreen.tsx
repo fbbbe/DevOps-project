@@ -447,13 +447,6 @@ function StudyCard({
             </View>
 
             <View style={S.studyMetaItem}>
-              <Users size={12} color={theme.color.mutedText} />
-              <Text style={S.studyMetaText}>
-                {study.currentMembers}/{study.maxMembers}
-              </Text>
-            </View>
-
-            <View style={S.studyMetaItem}>
               <Calendar size={12} color={theme.color.mutedText} />
               <Text style={S.studyMetaText}>
                 {study.startDate.slice(5)}

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -445,7 +445,7 @@ export default function ProfileScreen() {
             </>
           )}
 
-          {tab === "achievements" && (
+          {tab === "achievements" && !loading && (
             <View style={{ gap: 12 }}>
               {achievements.map((item) => (
                 <Card key={item.id}>
@@ -453,7 +453,7 @@ export default function ProfileScreen() {
                     <View style={styles.achievementIconWrap}>
                       <Text style={styles.achievementIcon}>{item.icon}</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View style={styles.achievementInfo}>
                       <Text style={styles.achievementTitle}>{item.name}</Text>
                       <Text style={styles.metaText}>{item.description}</Text>
                     </View>
@@ -632,7 +632,9 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: "center",
+    justifyContent: "center",
     gap: 16,
+    paddingVertical: 32,
   },
   avatar: {
     width: 72,
@@ -737,18 +739,25 @@ const styles = StyleSheet.create({
   achievementRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: 16,
+    paddingVertical: 12,
   },
   achievementIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#f1f5f9",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.color.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
   achievementIcon: {
     fontSize: 22,
+  },
+  achievementInfo: {
+    flex: 1,
+    justifyContent: "center",
+    gap: 4,
   },
   achievementTitle: {
     fontSize: 16,
