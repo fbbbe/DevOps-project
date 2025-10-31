@@ -57,11 +57,13 @@ type SessionProgress = {
 
 // 웹의 mockProgressData를 동일하게 이식  :contentReference[oaicite:2]{index=2}
 const initialProgress: SessionProgress[] = [
+  /*
   { id: '1', sessionNumber: 1, date: '2024-01-15', topic: '1주차: 기초 문법', targetProgress: 10, actualProgress: 10, notes: '기초 문법 완료. 모든 멤버가 잘 따라왔음.', isCompleted: true },
   { id: '2', sessionNumber: 2, date: '2024-01-22', topic: '2주차: 시제와 동사', targetProgress: 20, actualProgress: 18, notes: '시제 부분에서 약간의 어려움. 다음 주에 복습 예정.', isCompleted: true },
   { id: '3', sessionNumber: 3, date: '2024-01-29', topic: '3주차: 문장 구조', targetProgress: 30, actualProgress: 30, notes: '문장 구조 이해도 높음. 예정대로 진행.', isCompleted: true },
   { id: '4', sessionNumber: 4, date: '2024-02-05', topic: '4주차: 관계사', targetProgress: 40, actualProgress: 35, notes: '관계사가 어려워서 진도가 약간 늦어짐.', isCompleted: true },
   { id: '5', sessionNumber: 5, date: '2024-02-12', topic: '5주차: 가정법', targetProgress: 50, actualProgress: 0, notes: '', isCompleted: false },
+  */
 ];
 
 export default function ProgressScreen({ route, navigation }: any) {

@@ -173,11 +173,12 @@ export default function StudyDetailScreen({ route, navigation }: any) {
     [selfUserId, isOwner, isMember, study.ownerId, study.ownerNickname, user.nickname]
   );
 
-  const mockSessions = useMemo(() => ([
+  const mockSessions = useMemo(() => ([/** 
     { id: '1', date: '2024-01-15', topic: '1주차: 기초 문법', attendance: 4, total: 4, progress: 100 },
     { id: '2', date: '2024-01-22', topic: '2주차: 시제와 동사', attendance: 3, total: 4, progress: 75 },
     { id: '3', date: '2024-01-29', topic: '3주차: 문장 구조', attendance: 4, total: 4, progress: 100 },
     { id: '4', date: '2024-02-05', topic: '4주차: 관계사', attendance: 3, total: 4, progress: 75 },
+    */
   ]), []);
   const pendingRequestsCount = useMemo(
     () => joinRequests.filter((req) => req.status === 'pending').length,
@@ -608,9 +609,7 @@ export default function StudyDetailScreen({ route, navigation }: any) {
                 멤버 ({membersLoading ? '...' : members.length})
               </Text>
             </Pressable>
-            <Pressable onPress={()=>setTab('sessions')} style={[S.tabBtn, tab==='sessions' && S.tabActive]}>
-              <Text style={[S.tabTxt, tab==='sessions' && S.tabTxtActive]}>회차 ({mockSessions.length})</Text>
-            </Pressable>
+           
             {isOwner && (
               <Pressable onPress={()=>{ setTab('requests'); if (!requestsLoading) refreshJoinRequests(); }} style={[S.tabBtn, tab==='requests' && S.tabActive]}>
                 <Text style={[S.tabTxt, tab==='requests' && S.tabTxtActive]}>
