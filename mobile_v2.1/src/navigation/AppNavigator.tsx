@@ -78,19 +78,7 @@ function Tabs() {
         component={CreateStudyScreen}
         options={{
           tabBarLabel: '만들기',
-          tabBarIcon: () => (
-            <View
-              style={{
-                marginTop: -8,                         // 웹 -mt-2 느낌
-                width: 44, height: 44, borderRadius: 22,
-                backgroundColor: theme.color.primary,  // bg-primary
-                alignItems: 'center', justifyContent: 'center',
-                // shadowColor: '#000', shadowOpacity: 0.15, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 6,
-              }}
-            >
-              <Plus size={24} color={theme.color.onPrimary} />
-            </View>
-          ),
+          tabBarIcon: ({ color, size }) => <Plus color={color} size={size} />,
         }}
       />
 
