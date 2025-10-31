@@ -143,9 +143,17 @@ export default function DashboardScreen() {
       if (selectedSido === '온라인') {
         filtered = filtered.filter(study => study.type === 'online');
       } else {
-        filtered = filtered.filter(study => study.regionDetail?.sido === selectedSido);
+        filtered = filtered.filter(study => {
+          const regionText = (study.region ?? '').toString();
+          return (study.regionDetail?.sido === selectedSido) ||
+                 (selectedSido ? regionText.includes(selectedSido) : true);
+        });
         if (selectedSigungu !== 'all') {
-          filtered = filtered.filter(study => study.regionDetail?.sigungu === selectedSigungu);
+          filtered = filtered.filter(study => {
+            const regionText = (study.region ?? '').toString();
+            return (study.regionDetail?.sigungu === selectedSigungu) ||
+                   (selectedSigungu ? regionText.includes(selectedSigungu) : true);
+          });
         }
       }
     }
