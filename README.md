@@ -11,3 +11,4 @@
 # mobile_v2.1
 모바일 개발을 위해 `frontend_v2`를 **React Native**로 변환한 버전
 src/services/api.ts에서 ip주소 바꿔줘야함.
+src/services/authService.ts에서 ip주소 바꿔줘야함.
