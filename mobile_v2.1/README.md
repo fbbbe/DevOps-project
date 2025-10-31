@@ -16,7 +16,10 @@ npm install
 # 2) Expo 호환 버전 정렬
 npx expo install --fix
 
-# 3) 개발 서버 실행(캐시 클리어 + 터널)
+# 3) 개발 서버 실행(스마트폰과 같은 와이파이 연결 필수)
+npx expo start --lan
+
+# 3.1) 개발 서버 실행(캐시 클리어 + 터널)
 npx expo start --clear --tunnel
 ```
 
