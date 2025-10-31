@@ -14,6 +14,7 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(attachUserFromToken);
 
 // 기본 헬스체크
 app.get("/api/health", (_req, res) => {

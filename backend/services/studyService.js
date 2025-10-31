@@ -519,3 +519,286 @@ export async function updateJoinRequestStatusInDB({ requestId, decision, decided
     await closeQuietly(connection);
   }
 }
+
+async function fetchStudyMembership(connection, studyId, userId) {
+  const res = await connection.execute(
+    `
+    SELECT ROLE
+    FROM STUDY_MEMBERS
+    WHERE STUDY_ID = :studyId AND USER_ID = :userId
+    `,
+    { studyId, userId },
+    { outFormat: oracledb.OUT_FORMAT_OBJECT }
+  );
+  return res.rows?.[0] ?? null;
+}
+
+function resolveMessageColumns(columns) {
+  const studyIdCol = hasColumn(columns, 'STUDY_ID') ? 'STUDY_ID' : null;
+  const userIdCol = hasColumn(columns, 'USER_ID') ? 'USER_ID' : null;
+  let createdCol = null;
+  if (hasColumn(columns, 'CREATED_AT')) createdCol = 'CREATED_AT';
+  else if (hasColumn(columns, 'CREATED_ON')) createdCol = 'CREATED_ON';
+  else if (hasColumn(columns, 'CREATEDON')) createdCol = 'CREATEDON';
+  else if (hasColumn(columns, 'CREATED_DATE')) createdCol = 'CREATED_DATE';
+  else if (hasColumn(columns, 'CREATED')) createdCol = 'CREATED';
+  let contentCol = null;
+  if (hasColumn(columns, 'CONTENT')) contentCol = 'CONTENT';
+  else if (hasColumn(columns, 'MESSAGE')) contentCol = 'MESSAGE';
+  else if (hasColumn(columns, 'BODY')) contentCol = 'BODY';
+  else if (hasColumn(columns, 'TEXT')) contentCol = 'TEXT';
+  let idCol = null;
+  if (hasColumn(columns, 'STUDY_MESSAGE_ID')) idCol = 'STUDY_MESSAGE_ID';
+  else if (hasColumn(columns, 'MESSAGE_ID')) idCol = 'MESSAGE_ID';
+  else if (hasColumn(columns, 'MSG_ID')) idCol = 'MSG_ID';
+  else if (hasColumn(columns, 'ID')) idCol = 'ID';
+  return { studyIdCol, userIdCol, createdCol, contentCol, idCol };
+}
+
+export async function getStudyMessagesFromDB({ studyId, userId, limit = 200 }) {
+  if (!studyId) throw new Error('studyId is required');
+  if (!userId) throw new Error('userId is required');
+
+  const connection = await getConn();
+  try {
+    const membership = await fetchStudyMembership(connection, studyId, userId);
+    if (!membership) {
+      return { error: 'not_member' };
+    }
+
+    let messageColumns;
+    try {
+      messageColumns = await loadColumns(connection, 'STUDY_MESSAGES');
+    } catch (err) {
+      console.warn('STUDY_MESSAGES table not available:', err?.message ?? err);
+      return { messages: [], missingTable: true };
+    }
+
+    if (!messageColumns || messageColumns.size === 0) {
+      console.warn('STUDY_MESSAGES table has no columns');
+      return { messages: [], missingTable: true };
+    }
+
+    const { studyIdCol, userIdCol, createdCol, contentCol, idCol } = resolveMessageColumns(messageColumns);
+    if (!studyIdCol || !userIdCol || !createdCol || !contentCol) {
+      console.warn('STUDY_MESSAGES table missing required columns');
+      return { messages: [] };
+    }
+
+    const selectId = idCol ? `m.${idCol} AS MESSAGE_ID,` : '';
+    const sql = `
+      SELECT
+        ${selectId}
+        m.${studyIdCol} AS STUDY_ID,
+        m.${userIdCol} AS USER_ID,
+        m.${contentCol} AS CONTENT,
+        m.${createdCol} AS CREATED_AT,
+        u.NICKNAME
+      FROM STUDY_MESSAGES m
+      JOIN USERS u ON u.USER_ID = m.${userIdCol}
+      WHERE m.${studyIdCol} = :studyId
+      ORDER BY m.${createdCol} ASC
+    `;
+
+    const result = await connection.execute(
+      sql,
+      { studyId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT, maxRows: limit }
+    );
+
+    const normalized = await normalizeRows(result.rows ?? []);
+    const messages = normalized.map((row) => ({
+      messageId: row.MESSAGE_ID ?? row.message_id ?? row.id ?? null,
+      studyId: row.STUDY_ID ?? row.study_id ?? studyId,
+      userId: row.USER_ID ?? row.user_id ?? null,
+      content: row.CONTENT ?? row.MESSAGE ?? row.BODY ?? '',
+      createdAt: row.CREATED_AT ?? row.created_at ?? null,
+      nickname: row.NICKNAME ?? row.nickname ?? '',
+    }));
+
+    return { messages };
+  } finally {
+    await closeQuietly(connection);
+  }
+}
+
+export async function createStudyMessageInDB({ studyId, userId, content }) {
+  if (!studyId) throw new Error('studyId is required');
+  if (!userId) throw new Error('userId is required');
+  const trimmed = (content ?? '').trim();
+  if (!trimmed) throw new Error('메시지를 입력해 주세요.');
+
+  const connection = await getConn();
+  try {
+    const membership = await fetchStudyMembership(connection, studyId, userId);
+    if (!membership) {
+      return { error: 'not_member' };
+    }
+
+    let messageColumns;
+    try {
+      messageColumns = await loadColumns(connection, 'STUDY_MESSAGES');
+    } catch (err) {
+      console.error('STUDY_MESSAGES table not available:', err?.message ?? err);
+      throw new Error('채팅 메시지를 저장할 수 없습니다. 테이블이 존재하지 않습니다.');
+    }
+
+    if (!messageColumns || messageColumns.size === 0) {
+      throw new Error('채팅 메시지를 저장할 수 없습니다. 테이블이 존재하지 않습니다.');
+    }
+
+    const { studyIdCol, userIdCol, createdCol, contentCol, idCol } = resolveMessageColumns(messageColumns);
+    if (!studyIdCol || !userIdCol || !createdCol || !contentCol) {
+      throw new Error('채팅 메시지를 저장할 수 없습니다. 테이블 구조가 예상과 다릅니다.');
+    }
+
+    const insertSql = `
+      INSERT INTO STUDY_MESSAGES (
+        ${studyIdCol}, ${userIdCol}, ${contentCol}, ${createdCol}
+      ) VALUES (
+        :studyId, :userId, :content, SYSTIMESTAMP
+      )
+      RETURNING ROWID INTO :rowId
+    `;
+
+    const insertResult = await connection.execute(
+      insertSql,
+      {
+        studyId,
+        userId,
+        content: trimmed,
+        rowId: { dir: oracledb.BIND_OUT, type: oracledb.STRING },
+      },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    await connection.commit();
+
+    const rowId = insertResult.outBinds?.rowId?.[0];
+    if (!rowId) {
+      return {
+        message: {
+          messageId: null,
+          studyId,
+          userId,
+          content: trimmed,
+          createdAt: new Date().toISOString(),
+          nickname: '',
+        },
+      };
+    }
+
+    const selectId = idCol ? `m.${idCol} AS MESSAGE_ID,` : '';
+    const fetchSql = `
+      SELECT
+        ${selectId}
+        m.${studyIdCol} AS STUDY_ID,
+        m.${userIdCol} AS USER_ID,
+        m.${contentCol} AS CONTENT,
+        m.${createdCol} AS CREATED_AT,
+        u.NICKNAME
+      FROM STUDY_MESSAGES m
+      JOIN USERS u ON u.USER_ID = m.${userIdCol}
+      WHERE ROWID = :rowId
+    `;
+
+    const fetchResult = await connection.execute(
+      fetchSql,
+      { rowId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const normalized = await normalizeRows(fetchResult.rows ?? []);
+    const row = normalized[0];
+
+    if (!row) {
+      return {
+        message: {
+          messageId: null,
+          studyId,
+          userId,
+          content: trimmed,
+          createdAt: new Date().toISOString(),
+          nickname: '',
+        },
+      };
+    }
+
+    return {
+      message: {
+        messageId: row.MESSAGE_ID ?? row.message_id ?? row.id ?? null,
+        studyId: row.STUDY_ID ?? row.study_id ?? studyId,
+        userId: row.USER_ID ?? row.user_id ?? userId,
+        content: row.CONTENT ?? row.MESSAGE ?? row.BODY ?? trimmed,
+        createdAt: row.CREATED_AT ?? row.created_at ?? new Date().toISOString(),
+        nickname: row.NICKNAME ?? row.nickname ?? '',
+      },
+    };
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    await closeQuietly(connection);
+  }
+}
+
+export async function getStudyChatsFromDB(userId) {
+  if (!userId) throw new Error("userId is required");
+  const connection = await getConn();
+  try {
+    let messagesJoin = "";
+    let lastActivityExpr = "s.START_DATE";
+    let orderByExpr = "s.START_DATE DESC";
+
+    try {
+      const messageColumns = await loadColumns(connection, "STUDY_MESSAGES");
+      const hasRequiredColumns =
+        messageColumns &&
+        messageColumns.size > 0 &&
+        hasColumn(messageColumns, "STUDY_ID") &&
+        hasColumn(messageColumns, "CREATED_AT");
+
+      if (hasRequiredColumns) {
+        messagesJoin = `
+      LEFT JOIN (
+        SELECT STUDY_ID, MAX(CREATED_AT) AS LAST_MESSAGE_AT
+        FROM STUDY_MESSAGES
+        GROUP BY STUDY_ID
+      ) lm ON lm.STUDY_ID = s.STUDY_ID`;
+        lastActivityExpr = "NVL(lm.LAST_MESSAGE_AT, s.START_DATE)";
+        orderByExpr = `${lastActivityExpr} DESC`;
+      }
+    } catch (err) {
+      console.warn("STUDY_MESSAGES table not available, falling back to START_DATE.", err?.message ?? err);
+    }
+
+    const result = await connection.execute(
+      `
+      SELECT
+        s.STUDY_ID,
+        s.NAME,
+        s.DESCRIPTION,
+        NVL(m.MEMBER_COUNT, 0) AS MEMBER_COUNT,
+        ${lastActivityExpr} AS LAST_MESSAGE_AT,
+        s.STATUS,
+        s.TERM_TYPE,
+        s.START_DATE,
+        s.END_DATE
+      FROM STUDIES s
+      JOIN STUDY_MEMBERS sm ON sm.STUDY_ID = s.STUDY_ID
+      LEFT JOIN (
+        SELECT STUDY_ID, COUNT(*) AS MEMBER_COUNT
+        FROM STUDY_MEMBERS
+        GROUP BY STUDY_ID
+      ) m ON m.STUDY_ID = s.STUDY_ID
+      ${messagesJoin}
+      WHERE sm.USER_ID = :userId
+      ORDER BY ${orderByExpr}
+      `,
+      { userId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    return result.rows || [];
+  } finally {
+    await closeQuietly(connection);
+  }
+}
+
