@@ -11,6 +11,8 @@ import {
   getJoinRequestsFromDB,
   updateJoinRequestStatusInDB,
   getStudyChatsFromDB,
+  getStudyMessagesFromDB,
+  createStudyMessageInDB,
 } from '../services/studyService.js';
 
 const router = express.Router();
@@ -245,6 +247,69 @@ router.patch('/join-requests/:requestId', async (req, res) => {
     return res
       .status(500)
       .json({ error: err?.message || '\uCC38\uC5EC \uC694\uCCAD \uCC98\uB9AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.' });
+  }
+});
+
+router.get('/studies/:studyId/messages', async (req, res) => {
+  const { studyId } = req.params;
+  if (!studyId) {
+    return res.status(400).json({ error: '\uC2A4\uD130\uB514 ID\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4.' });
+  }
+  if (!req.user?.id) {
+    return res.status(401).json({ error: '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.' });
+  }
+
+  const limitRaw = (req.query?.limit ?? req.query?.max);
+  let limit = Number(limitRaw);
+  if (!limit || Number.isNaN(limit) || limit <= 0) {
+    limit = 200;
+  }
+
+  try {
+    const result = await getStudyMessagesFromDB({
+      studyId,
+      userId: req.user.id,
+      limit,
+    });
+    if (result?.error === 'not_member') {
+      return res.status(403).json({ error: '\uC2A4\uD130\uB514 \uBA64\uBC84\uB9CC \uCC44\uD305\uC744 \uBCFC \uC218 \uC788\uC2B5\uB2C8\uB2E4.' });
+    }
+    return res.json(result.messages ?? []);
+  } catch (err) {
+    console.error('Get Study Messages Error:', err);
+    return res
+      .status(500)
+      .json({ error: err?.message || '\uCC44\uD305 \uBA54\uC2DC\uC9C0\uB97C \uBD88\uB7EC\uC624\uB294\uB370 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.' });
+  }
+});
+
+router.post('/studies/:studyId/messages', async (req, res) => {
+  const { studyId } = req.params;
+  if (!studyId) {
+    return res.status(400).json({ error: '\uC2A4\uD130\uB514 ID\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4.' });
+  }
+  if (!req.user?.id) {
+    return res.status(401).json({ error: '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.' });
+  }
+  const { text } = req.body ?? {};
+  if (typeof text !== 'string' || text.trim() === '') {
+    return res.status(400).json({ error: '\uBA54\uC2DC\uC9C0\uB97C \uC785\uB825\uD574 \uC8FC\uC138\uC694.' });
+  }
+  try {
+    const result = await createStudyMessageInDB({
+      studyId,
+      userId: req.user.id,
+      content: text,
+    });
+    if (result?.error === 'not_member') {
+      return res.status(403).json({ error: '\uC2A4\uD130\uB514 \uBA64\uBC84\uB9CC \uBA54\uC2DC\uC9C0\uB97C \uBCF4\uB0BC \uC218 \uC788\uC2B5\uB2C8\uB2E4.' });
+    }
+    return res.status(201).json(result.message ?? null);
+  } catch (err) {
+    console.error('Create Study Message Error:', err);
+    return res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : '\uBA54\uC2DC\uC9C0\uB97C \uC800\uC7A5\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.' });
   }
 });
 
